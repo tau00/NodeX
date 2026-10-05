@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+
+# Build output
+/dist/
+
+# IDE
+/.idea/
+
+# Raw Maya icon dump (the shipped set lives in nodex/icons)
+/icons/
+
+# Agent-facing notes, project map and working files (local only)
+/.claude/
+/WORK.md
+/BIBLE.md
+/ROADMAP.md
+/.work-stamp.json
+/runs/
+/output/
+/mockup.html
+
+# Local test logs and live-session helpers (hard-wired to one Maya setup)
+/tests/*.log
+/tests/_live_*.py
+/tests/_ne_grab.py
