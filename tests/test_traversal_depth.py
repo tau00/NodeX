@@ -80,12 +80,49 @@ class TraversalDepthTest(unittest.TestCase):
         self.graph_up_from_d()
         self.bridge.store.save()
         loaded = store.Store().load()
-        self.assertEqual(loaded['tabs'][0]['graph'], {'direction': 'up', 'seeds': [self.ids['d']]})
+        graph = loaded['tabs'][0]['graph']
+        self.assertEqual((graph['direction'], graph['seeds']), ('up', [self.ids['d']]))
+        self.assertEqual(set(graph['nodes']), self.nodes('cd'))
         self.bridge.set_depth(None)
         self.assertEqual(cmds.optionVar(q=DEPTH_VAR), -1)
         self.bridge.set_depth(4)
         self.assertEqual(cmds.optionVar(q=DEPTH_VAR), 4)
-        self.assertEqual(Bridge().depth, 4)
+        b = Bridge()
+        self.assertEqual(b.depth, 4)
+        b._flush_timer.stop()
+
+    def test_board_edited_after_graph_is_not_replaced(self):
+        self.graph_up_from_d()
+        self.bridge.add_nodes([self.ids['a']], arrange_new=False)     # added by hand
+        del self.messages[:]
+        self.bridge.set_depth(2)
+        self.assertEqual(self.board(), self.nodes('acd'))
+        self.assertIsNone(self.bridge.tab['graph'])
+        self.assertIn('graph again', self.messages[-1])
+        self.bridge.set_depth(3)                                       # forgotten, not retried
+        self.assertEqual(self.board(), self.nodes('acd'))
+
+    def test_board_with_node_removed_after_graph_is_not_replaced(self):
+        self.graph_up_from_d()
+        self.bridge.remove_nodes([self.ids['c']], remember=False)
+        self.bridge.set_depth(2)
+        self.assertEqual(self.board(), self.nodes('d'))
+
+    def test_display_mode_change_keeps_depth_working(self):
+        self.graph_up_from_d()
+        self.bridge.set_shapes('none')
+        self.bridge.set_depth(2)
+        self.assertEqual(self.board(), self.nodes('bcd'))
+
+    def test_malformed_saved_values_fall_back(self):
+        cmds.optionVar(stringValue=(DEPTH_VAR, 'deep'))
+        b = Bridge()
+        self.assertEqual(b.depth, 1)
+        b._flush_timer.stop()
+        for bad in ({'direction': 'up'}, {'direction': 'sideways', 'seeds': []}, ['up'], 'x'):
+            tab = store.new_tab('Odd')
+            tab['graph'] = bad
+            self.assertIsNone(store._normalise({'tabs': [tab]})['tabs'][0]['graph'])
 
     def test_old_tab_without_graph_key_normalises_to_none(self):
         tab = store.new_tab('Old')

@@ -587,8 +587,9 @@ Item {
                             onEntered: board.tipStart(node.nid, r.key, lbl)
                             onExited: board.tipStop()
                             onPressed: (mouse) => {
-                                // Knife and lazy connect start on the canvas, as from the body.
-                                if (mouse.modifiers & (Qt.AltModifier | Qt.ControlModifier | Qt.ShiftModifier)) {
+                                // Knife and lazy connect start on the canvas, as from the body;
+                                // a dead node keeps its node menu (it has no attribute menu).
+                                if (node.dead || (mouse.modifiers & (Qt.AltModifier | Qt.ControlModifier | Qt.ShiftModifier))) {
                                     mouse.accepted = false
                                     return
                                 }

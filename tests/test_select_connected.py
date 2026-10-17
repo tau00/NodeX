@@ -73,6 +73,12 @@ class SelectConnectedTest(unittest.TestCase):
         self.assertEqual(self.bridge.sel, [self.ids['src']])
         self.assertIn('need 3 free slots', self.messages[-1])
 
+    def test_board_over_limit_still_selects_nodes_already_on_it(self):
+        self.bridge.add_nodes(self.nodes(['src', 'a', 'b']), arrange_new=False)
+        self.bridge.max_nodes = 2                     # e.g. a saved tab above a lowered limit
+        self.bridge.selectConnected(self.ids['b'], 'input1', 'in')
+        self.assertEqual(self.bridge.sel, [self.ids['src']])
+
     def test_locked_with_everything_on_board_still_selects(self):
         self.bridge.add_nodes(self.nodes(['src', 'a']), arrange_new=False)
         self.bridge.locked = True
@@ -112,6 +118,13 @@ class SelectConnectedTest(unittest.TestCase):
         self.bridge.selectConnected(maker_id, 'output', 'out')
         self.assertEqual(self.bridge.sel, [xf_id])
         self.assertTrue(all(cmds.nodeType(model.path_of(u)) != 'mesh' for u in self.bridge.infos))
+
+    def test_name_fed_only_by_default_node_offers_outputs(self):
+        cmds.connectAttr('time1.outTime', self.names['c'] + '.input1Z')
+        cmds.connectAttr(self.names['c'] + '.input1Z', self.names['b'] + '.input2Z')
+        self.bridge.add_nodes(self.nodes(['b', 'c']), arrange_new=False)
+        self.assertEqual(self.bridge._connected(self.ids['c'], 'input1Z', '')[:2], ('out', [self.ids['b']]))
+        self.assertEqual(self.bridge._connected(self.ids['c'], 'input1Z', 'in')[1], [])
 
     def test_unconnected_attribute_finds_nothing(self):
         self.bridge.add_nodes([self.ids['a']], arrange_new=False)

@@ -201,6 +201,10 @@ def _normalise(data):
         for k in nt:
             if k in t:
                 nt[k] = t[k]
+        g = nt["graph"]
+        if not (isinstance(g, dict) and g.get("direction") in ("up", "down", "both")
+                and isinstance(g.get("seeds"), list)):
+            nt["graph"] = None
         out["tabs"].append(nt)
     if not out["tabs"]:
         out["tabs"] = [new_tab("Graph 1")]

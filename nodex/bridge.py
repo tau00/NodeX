@@ -43,7 +43,10 @@ def shapes_pref():
 def depth_pref():
     """Traversal depth of the last session; None = unlimited."""
     if cmds.optionVar(exists=DEPTH_VAR):
-        d = int(cmds.optionVar(q=DEPTH_VAR))
+        try:
+            d = int(cmds.optionVar(q=DEPTH_VAR))
+        except (TypeError, ValueError):
+            return 1
         return None if d < 0 else d
     return 1
 
@@ -960,7 +963,10 @@ class Bridge(QtCore.QObject):
             return
         forms = ops.copy_forms(plug)
         menu = QtWidgets.QMenu()
-        side_used, shown, _ = self._connected(u, path, side)
+        try:
+            side_used, shown, _ = self._connected(u, path, side)
+        except (RuntimeError, ValueError):
+            side_used, shown = side, []     # the copy items still work
         sel = menu.addAction("Select connected nodes (%d)" % len(shown))
         sel.setEnabled(bool(shown) and u not in self.dead)
         sel.triggered.connect(lambda _=False: self.selectConnected(u, path, side_used))
@@ -989,6 +995,11 @@ class Bridge(QtCore.QObject):
         if self.shapes == "none":
             # A shape-free board shows the transform in place of each shape.
             shown = [v for v in dict.fromkeys(model.transform_of(v) for v in shown) if v != u]
+        if not side and side_used == "in" and not shown:
+            # An attribute name fed only by default nodes (time1) offers its outputs instead.
+            alt = self._connected(u, path, "out")
+            if alt[1]:
+                return alt
         return side_used, shown, skipped
 
     @QtCore.Slot(str, str, str)
@@ -998,7 +1009,11 @@ class Bridge(QtCore.QObject):
         plug = self._plug(u, path)
         if u in self.dead or not plug:
             return
-        side_used, shown, skipped = self._connected(u, path, side)
+        try:
+            side_used, shown, skipped = self._connected(u, path, side)
+        except (RuntimeError, ValueError) as e:
+            self.status(str(e).strip())
+            return
         where = "%s (%s)" % (ops.copy_forms(plug)["node"], "inputs" if side_used == "in" else "outputs")
         more = "; %d default node%s skipped" % (skipped, "" if skipped == 1 else "s") if skipped else ""
         if not shown:
@@ -1008,7 +1023,7 @@ class Bridge(QtCore.QObject):
         if missing and self.locked:
             self.status("Unlock the graph to show connected nodes")
             return
-        if len(self.infos) + len(missing) > self.max_nodes:
+        if missing and len(self.infos) + len(missing) > self.max_nodes:
             self.status("Connected nodes need %d free slots; raise Options > Node limit" % len(missing))
             return
         if missing:
@@ -1798,6 +1813,7 @@ class Bridge(QtCore.QObject):
         cmds.optionVar(stringValue=(SHAPES_VAR, mode))
         if self.locked or not self.infos:
             return
+        graphed = self._board_is_last_graph()
         live = [u for u in self.infos if u not in self.dead]
         if mode == "none":
             shapes = [u for u in live if model.transform_of(u) != u]
@@ -1812,6 +1828,8 @@ class Bridge(QtCore.QObject):
             self.status("Graph all shapes%s: %d shape%s added"
                         % (" except shading networks" if mode == "except" else "", len(extra),
                            "" if len(extra) == 1 else "s"))
+        if graphed:
+            self.tab["graph"]["nodes"] = list(self.infos)   # still the last graph, refiltered
 
     def _filter_shapes(self, uuids, keep=()):
         """Display group: shapes come with their transforms, or are replaced by them."""
@@ -1844,7 +1862,16 @@ class Bridge(QtCore.QObject):
         if not seeds:
             self.status("The graphed nodes are gone; graph again")
             return
+        if not self._board_is_last_graph():
+            # Re-graphing would replace nodes added or removed by hand (and their pins/widths).
+            self.tab["graph"] = None
+            self.status("The board changed since the last Graph; graph again to use depth")
+            return
         self._graph(seeds, last["direction"])
+
+    def _board_is_last_graph(self):
+        last = self.tab.get("graph")
+        return bool(last) and set(last.get("nodes") or ()) == set(self.infos)
 
     def _graph(self, seeds, direction):
         # One spare node tells "exactly at the limit" from "cut at the limit". Shapes filtered
@@ -1869,6 +1896,7 @@ class Bridge(QtCore.QObject):
             self.status("Graphed %d node%s" % (len(found), "" if len(found) == 1 else "s"))
         if added:
             QtCore.QTimer.singleShot(50, lambda: self.frameRequested.emit(True))
+        self.tab["graph"]["nodes"] = list(self.infos)     # what a depth change may replace
 
     @QtCore.Slot()
     def rearrange(self, aspect=None):
