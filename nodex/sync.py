@@ -8,7 +8,7 @@ reloaded or crashed panel can never leave callbacks behind.
 import __main__
 
 import maya.api.OpenMaya as om
-from PySide2 import QtCore
+from PySide6 import QtCore
 
 from . import model
 

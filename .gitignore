@@ -25,3 +25,6 @@ __pycache__/
 /tests/*.log
 /tests/_live_*.py
 /tests/_ne_grab.py
+
+# 10x workflow change folders (local only)
+/context/

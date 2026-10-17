@@ -15,7 +15,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "windows")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from PySide2 import QtCore, QtQuickWidgets, QtWidgets  # noqa: E402
+from PySide6 import QtCore, QtQuickWidgets, QtWidgets  # noqa: E402
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
 
@@ -142,7 +142,7 @@ def main():
     b = _probe.make_bridge(snap)
     q = QtQuickWidgets.QQuickWidget()
     q.setResizeMode(QtQuickWidgets.QQuickWidget.SizeRootObjectToView)
-    q.engine().addImportPath(panel.maya_qml_dir())
+    panel.add_maya_qml_dir(q.engine())
     warnings = []
     q.engine().warnings.connect(lambda ws: warnings.extend(w.toString() for w in ws))
     q.rootContext().setContextProperty("bridge", b)
@@ -157,7 +157,7 @@ def main():
     _probe.pump(200)
     res = {"nodes": len(snap["nodes"]), "wires": len(snap["wires"]),
            "load_ms": round((time.perf_counter() - t) * 1000), "errors": [e.toString() for e in q.errors()]}
-    from PySide2 import QtQml
+    from PySide6 import QtQml
     for label, expr in (("snapshot_ms", "bridge.snapshot().nodes.length"), ("reset_ms", "reset()")):
         e = QtQml.QQmlExpression(q.rootContext(), r, expr)
         t = time.perf_counter()

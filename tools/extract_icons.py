@@ -10,7 +10,7 @@ Toolbar icons only resolve inside the Maya GUI: exec this file from the Script E
 import os
 import sys
 
-from PySide2 import QtGui, QtWidgets
+from PySide6 import QtGui, QtWidgets
 
 # Inside the Maya GUI a QApplication already exists and every icon library is loaded; the
 # Node Editor toolbar icons are only available there. Under mayapy, start standalone first.

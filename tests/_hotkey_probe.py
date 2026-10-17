@@ -4,7 +4,7 @@ import os
 import sys
 
 from _qml_probe import app, make_bridge, pump
-from PySide2 import QtCore, QtGui, QtQml, QtQuickWidgets, QtWidgets
+from PySide6 import QtCore, QtGui, QtQml, QtQuickWidgets, QtWidgets
 from nodex import panel
 
 with open(sys.argv[1]) as stream:
@@ -29,7 +29,7 @@ owner.bridge = b
 q.installEventFilter(owner)
 q.quickWindow().installEventFilter(owner)
 q.setResizeMode(QtQuickWidgets.QQuickWidget.SizeRootObjectToView)
-q.engine().addImportPath(panel.maya_qml_dir())
+panel.add_maya_qml_dir(q.engine())
 warnings = []
 q.engine().warnings.connect(lambda ws: warnings.extend(w.toString() for w in ws))
 q.rootContext().setContextProperty('bridge', b)
@@ -50,7 +50,7 @@ def js(source):
 
 js('forceActiveFocus(); panX = 0; panY = 0; zoom = 1; mouseWorld = Qt.point(700, 450)')
 host_calls = []
-shortcut = QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+C'), owner)
+shortcut = QtGui.QShortcut(QtGui.QKeySequence('Ctrl+C'), owner)
 shortcut.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
 shortcut.activated.connect(lambda: host_calls.append('copy'))
 

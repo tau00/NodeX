@@ -18,7 +18,7 @@ _src = open(os.path.join(HERE, "_perf_probe.py")).read().replace("\nmain()\n", "
 exec(compile(_src, "_perf_probe.py", "exec"))   # column(), _probe, app, panel ...
 sys.argv = _argv
 
-from PySide2 import QtCore, QtQuickWidgets  # noqa: E402
+from PySide6 import QtCore, QtQuickWidgets  # noqa: E402
 
 
 def main():
@@ -28,7 +28,7 @@ def main():
     b = _probe.make_bridge(snap)
     q = QtQuickWidgets.QQuickWidget()
     q.setResizeMode(QtQuickWidgets.QQuickWidget.SizeRootObjectToView)
-    q.engine().addImportPath(panel.maya_qml_dir())
+    panel.add_maya_qml_dir(q.engine())
     warnings = []
     q.engine().warnings.connect(lambda ws: warnings.extend(w.toString() for w in ws))
     q.rootContext().setContextProperty("bridge", b)
@@ -51,7 +51,7 @@ def main():
     view(0.6)
     q.grabFramebuffer()
     res["cross_frame_ms"] = round((time.perf_counter() - t) * 1000, 1)
-    from PySide2 import QtQml
+    from PySide6 import QtQml
 
     def ev(expr):
         v = QtQml.QQmlExpression(q.rootContext(), r, expr).evaluate()

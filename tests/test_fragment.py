@@ -91,6 +91,10 @@ class FragmentTest(unittest.TestCase):
         self.assertFalse(cmds.listRelatives(new[0], parent=True))
         self.assertEqual(model.uuids_of(cmds.listRelatives(new[1], parent=True)), [mapping[snap['selected'][0]]])
 
+    # On a non-UTF-8 Windows codepage (e.g. 1250) Maya's own .ma export writes Cyrillic as "?"
+    # and rewrites the live attribute too, with no NodeX code involved: capture inherits it.
+    @unittest.skipUnless(cmds.about(codeset=True).replace('-', '').lower() in ('65001', 'utf8'),
+                         "Maya codeset %s cannot hold the test's Cyrillic" % cmds.about(codeset=True))
     def test_namespaced_nodes_and_unicode_values(self):
         cmds.namespace(add='rig')
         a = cmds.createNode('multiplyDivide', name='rig:math')

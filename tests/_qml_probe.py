@@ -17,7 +17,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")   # "windows" for real fon
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from PySide2 import QtCore, QtQml, QtQuickWidgets, QtWidgets  # noqa: E402
+from PySide6 import QtCore, QtQml, QtQuickWidgets, QtWidgets  # noqa: E402
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
 
@@ -71,7 +71,7 @@ def main():
     b = make_bridge(snap)
     q = QtQuickWidgets.QQuickWidget()
     q.setResizeMode(QtQuickWidgets.QQuickWidget.SizeRootObjectToView)
-    q.engine().addImportPath(panel.maya_qml_dir())
+    panel.add_maya_qml_dir(q.engine())
     warnings = []
     q.engine().warnings.connect(lambda ws: warnings.extend(w.toString() for w in ws))
     q.rootContext().setContextProperty("bridge", b)
@@ -106,7 +106,7 @@ def main():
         res["jsCalls"] = calls
         # A middle-drag pan while the smooth zoom is still easing must carry the zoom's view
         # on: the pan used to be absolute from the press and threw the view back (teleport).
-        from PySide2 import QtGui
+        from PySide6 import QtGui
 
         def mmb(kind, x, button, buttons):
             p = QtCore.QPointF(x, 300)

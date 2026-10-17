@@ -2,7 +2,7 @@
 import json
 import sys
 from _qml_probe import app, make_bridge
-from PySide2 import QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets
 from nodex import model, ops
 from nodex.inbetween import SocketDialog
 

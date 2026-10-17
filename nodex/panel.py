@@ -7,7 +7,7 @@ dockable control never calls closeEvent (global leaf maya-qt-window-and-widget-t
 """
 import os
 
-from PySide2 import QtCore, QtGui, QtQuickWidgets, QtWidgets
+from PySide6 import QtCore, QtGui, QtQuickWidgets, QtWidgets
 
 from . import bridge as bridge_mod
 from . import keys, model, theme
@@ -58,9 +58,23 @@ def _icon(name):
     return QtGui.QIcon(os.path.join(TB_DIR, name + ".png"))
 
 
+def _flag(v):
+    """A Qt enum / flag value, or a plain int from QML, as a plain int."""
+    return getattr(v, "value", v)
+
+
 def maya_qml_dir():
-    root = os.environ.get("MAYA_LOCATION") or "C:/Program Files/Autodesk/Maya2024"
-    return os.path.join(root, "qml")
+    """Maya's own QML folder, or None: Qt's default import path already holds it, and a guessed
+    folder of another Maya could hand Qt 6 the wrong plugins."""
+    root = os.environ.get("MAYA_LOCATION")
+    path = os.path.join(root, "qml") if root else None
+    return path if path and os.path.isdir(path) else None
+
+
+def add_maya_qml_dir(engine):
+    path = maya_qml_dir()
+    if path:
+        engine.addImportPath(path)
 
 
 class ClipRow(QtWidgets.QWidget):
@@ -250,13 +264,13 @@ class NodeXPanel(QtWidgets.QWidget):
     @classmethod
     def owns_key(cls, key, modifiers):
         """Reserve only supported combinations while the board, rather than an editor, has focus."""
-        mods = int(modifiers) & int(QtCore.Qt.ControlModifier | QtCore.Qt.AltModifier |
-                                    QtCore.Qt.ShiftModifier | QtCore.Qt.MetaModifier)
-        ctrl, alt, shift = [int(m) for m in (QtCore.Qt.ControlModifier, QtCore.Qt.AltModifier,
-                                           QtCore.Qt.ShiftModifier)]
+        # PySide6 enums are not ints (int() raises): compare plain values.
+        ctrl, alt, shift, meta = [_flag(m) for m in (QtCore.Qt.ControlModifier, QtCore.Qt.AltModifier,
+                                                     QtCore.Qt.ShiftModifier, QtCore.Qt.MetaModifier)]
+        mods = _flag(modifiers) & (ctrl | alt | shift | meta)
         if mods == ctrl:
             return key in (QtCore.Qt.Key_C, QtCore.Qt.Key_V, QtCore.Qt.Key_J)
-        if mods & ctrl or mods & int(QtCore.Qt.MetaModifier):
+        if mods & ctrl or mods & meta:
             return False
         if mods & alt:
             return key in (QtCore.Qt.Key_I, QtCore.Qt.Key_O, QtCore.Qt.Key_T,
@@ -293,12 +307,15 @@ class NodeXPanel(QtWidgets.QWidget):
         self.quick.setClearColor(QtGui.QColor(theme.CHROME["canvas"]))
         self.quick.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.quick.setMinimumSize(0, 0)
-        self.quick.engine().addImportPath(maya_qml_dir())
+        add_maya_qml_dir(self.quick.engine())
         self.quick.rootContext().setContextProperty("bridge", self.bridge)
         self.quick.setSource(QtCore.QUrl.fromLocalFile(os.path.join(QML_DIR, "Board.qml")))
         errs = [e.toString() for e in self.quick.errors()]
         if errs:
             raise RuntimeError("NodeX QML failed:\n" + "\n".join(errs))
+        # Maya picks the graphics API (it follows the viewport); the panel only reports it.
+        api = self.quick.quickWindow().rendererInterface().graphicsApi()
+        print("NodeX: Qt Quick on %s" % getattr(api, "name", api))
         self.quick.installEventFilter(self)
         self.quick.quickWindow().installEventFilter(self)
         lay.addWidget(self.quick, 1)
@@ -482,7 +499,7 @@ class NodeXPanel(QtWidgets.QWidget):
         m.addSeparator()
         wm = m.addMenu("Wires")
         self.links_actions = {}
-        grp = QtWidgets.QActionGroup(self)
+        grp = QtGui.QActionGroup(self)
         for mode, label in (("auto", "Auto (node links above 1200 connections)"),
                             ("off", "Every connection"), ("on", "Node links\tW")):
             a = wm.addAction(label, lambda mo=mode: br.setLinks(mo))
@@ -817,7 +834,7 @@ def instance():
 def _build_into_current():
     """uiScript of the workspaceControl: builds the panel into the control's layout."""
     import maya.OpenMayaUI as omui
-    from shiboken2 import wrapInstance
+    from shiboken6 import wrapInstance
     close(delete_control=False)
     ptr = omui.MQtUtil.getCurrentParent()
     parent = wrapInstance(int(ptr), QtWidgets.QWidget)

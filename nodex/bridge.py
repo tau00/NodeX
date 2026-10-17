@@ -10,7 +10,7 @@ import json
 
 import maya.api.OpenMaya as om
 import maya.cmds as cmds
-from PySide2 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from . import catalog, fragment, layout, model, naming, ops, presets, store, sync, theme
 
@@ -48,7 +48,7 @@ def _js(v):
 
 class Bridge(QtCore.QObject):
     # --> QML. Every signal a QML handler binds to MUST name its parameters (`arguments=`):
-    # a PySide2 signal with 3+ unnamed parameters crashes QQmlBoundSignalExpression while
+    # a PySide 5.15 signal with 3+ unnamed parameters crashed QQmlBoundSignalExpression while
     # `Connections { function onX(a, b, c) }` is bound (ACCESS_VIOLATION in setSource, ~25%
     # of loads). Guarded by tests/test_qml.py.
     boardReset = QtCore.Signal()
@@ -601,8 +601,8 @@ class Bridge(QtCore.QObject):
 
     @QtCore.Slot(str, int)
     def clickNode(self, u, modifiers):
-        shift = bool(modifiers & int(QtCore.Qt.ShiftModifier))
-        ctrl = bool(modifiers & int(QtCore.Qt.ControlModifier))
+        shift = bool(modifiers & QtCore.Qt.ShiftModifier.value)
+        ctrl = bool(modifiers & QtCore.Qt.ControlModifier.value)
         if shift and u in self.sel:
             if self.sel[-1] == u:
                 self.sel.remove(u)
@@ -1504,7 +1504,7 @@ class Bridge(QtCore.QObject):
                 return
             dialog = SocketDialog(type_name, source, dest, inputs, outputs,
                                   QtWidgets.QApplication.activeWindow())
-            if dialog.exec_() == dialog.Accepted:
+            if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
                 self._insert_inbetween(wire, type_name, *dialog.attributes())
         except (RuntimeError, ValueError, TypeError) as e:
             self.status(str(e).strip())

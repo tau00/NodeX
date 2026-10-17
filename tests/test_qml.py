@@ -1,6 +1,6 @@
 """Board.qml loads and binds to the real Bridge (the crash of the first live nodex.show()).
 
-Root cause, found by bisecting headless loads: a PySide2 signal with 3+ UNNAMED parameters
+Root cause, found by bisecting headless loads: a PySide 5.15 signal with 3+ UNNAMED parameters
 (any types) crashes QQmlBoundSignalExpression while `Connections { function onX(a, b, c) }` is
 bound -- ACCESS_VIOLATION inside QQuickWidget.setSource in ~25% of loads. Named parameters
 (`Signal(..., arguments=[...])`) fix it. The name check below is the deterministic guard;
@@ -21,6 +21,8 @@ from concurrent.futures import ThreadPoolExecutor
 import _maya
 
 _maya.start()
+
+from PySide6 import QtCore  # noqa: E402
 
 from nodex import bridge, fixture, model  # noqa: E402
 
@@ -71,7 +73,7 @@ class QmlTest(unittest.TestCase):
         mo = bridge.Bridge.staticMetaObject
         for i in range(mo.methodOffset(), mo.methodCount()):
             m = mo.method(i)
-            if m.methodType() != m.Signal:
+            if m.methodType() != QtCore.QMetaMethod.MethodType.Signal:
                 continue
             names = [bytes(n).decode() for n in m.parameterNames()]
             self.assertTrue(all(names), "Bridge.%s has unnamed parameters %s"
@@ -100,7 +102,7 @@ class QmlTest(unittest.TestCase):
         checked = []
         for i in range(mo.methodOffset(), mo.methodCount()):
             m = mo.method(i)
-            if m.methodType() != m.Slot:
+            if m.methodType() != QtCore.QMetaMethod.MethodType.Slot:
                 continue
             if b"QVariant" not in [bytes(t) for t in m.parameterTypes()]:
                 continue
