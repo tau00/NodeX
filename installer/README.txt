@@ -1,7 +1,9 @@
 NodeX -- a node editor for Maya
 ================================
 
-Requirements: Maya 2022, 2023 or 2024 on Windows (PySide2). Maya 2025+ is not supported yet.
+Requirements: Windows, Maya 2025 or newer (PySide6), tested on Maya 2026.
+Maya 2022-2024: use NodeX 1.0.0. Installing 2.0.0 removes NodeX from those versions
+on the same machine (the module is only loaded by Maya 2025+).
 
 Install
 -------
@@ -15,7 +17,7 @@ The editor is installed as a Maya module for the current user:
     Documents/maya/modules/NodeX/
 Your own userSetup.py is not changed. Installing again replaces the old version.
 
-Maya 2022+ may ask once whether to allow the module's userSetup.py at the next start
+Maya may ask once whether to allow the module's userSetup.py at the next start
 (Security preferences). Allow it, otherwise the Windows menu item is missing; the shelf
 button works either way.
 

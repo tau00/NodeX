@@ -24,8 +24,8 @@ Keys: see [HOTKEYS.md](HOTKEYS.md), or Help > Keys inside the editor.
 
 ## Requirements
 
-- Windows
-- Maya 2022, 2023 or 2024 (PySide2). Maya 2025+ (PySide6) is not supported yet.
+- Windows, Maya 2025 or newer (PySide6), tested on Maya 2026.
+- Maya 2022–2024: use NodeX 1.0.0. Installing 2.0.0 removes NodeX from those versions on the same machine.
 
 ## Install
 
@@ -50,7 +50,8 @@ nodex.show()
 ```
 nodex/        the package: model, ops, bridge, panel, QML board (nodex/qml)
 installer/    drag-and-drop installer and userSetup
-tools/        build_palette.py (colours from Maya prefs), extract_icons.py (Maya icon dump)
+tools/        build_palette.py (colours from Maya prefs), build_shaders.py (QML shaders to .qsb
+              with Maya's qsb), extract_icons.py (Maya icon dump)
 tests/        unittest suites and QML probes
 build.py      packs dist/NodeX-<version>.zip
 ```
@@ -61,7 +62,7 @@ Tests run headless under `mayapy`:
 tests\run.bat
 ```
 
-Set `MAYAPY` to point at another Maya version (default: Maya 2024 in `Program Files`).
+Set `MAYAPY` to point at another Maya version (default: Maya 2026 in `Program Files`).
 
 ## License
 
