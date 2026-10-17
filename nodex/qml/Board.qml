@@ -786,7 +786,7 @@ Item {
     }
 
     // ------------------------------------------------------------------ keys (provisional v1 map, see panel Help)
-    Keys.onPressed: {
+    Keys.onPressed: (event) => {
         if (!board.activeFocus) { event.accepted = false; return }
         var k = event.key, m = event.modifiers
         event.accepted = true
@@ -1154,7 +1154,7 @@ Item {
         property real px: 0
         property real py: 0
         property bool moved: false
-        onPressed: {
+        onPressed: (mouse) => {
             board.forceActiveFocus()
             board.tipStop()
             sx = mouse.x; sy = mouse.y; px = mouse.x; py = mouse.y; moved = false
@@ -1185,7 +1185,7 @@ Item {
                 else gesture = 2
             }
         }
-        onPositionChanged: {
+        onPositionChanged: (mouse) => {
             board.mouseWorld = board.toWorld(mouse.x, mouse.y)
             if (!pressed) {
                 var hw = board.hitWire(mouse.x, mouse.y)
@@ -1213,7 +1213,7 @@ Item {
                 board.lazy = line; fx.requestPaint()
             }
         }
-        onReleased: {
+        onReleased: (mouse) => {
             if (gesture === 2) {
                 if (moved && board.marquee) {
                     var m = board.marquee, a = board.toWorld(m.x, m.y), b = board.toWorld(m.x + m.w, m.y + m.h)
@@ -1261,7 +1261,7 @@ Item {
         // Leaving the canvas (onto a node, or out of the panel) must drop the hovered wire,
         // or it stays drawn hot until the pointer comes back.
         onExited: if (board.hoverWire !== "") { board.hoverWire = ""; board.tipStop(); board.repaintWires() }
-        onDoubleClicked: {
+        onDoubleClicked: (mouse) => {
             if (mouse.button !== Qt.LeftButton) return
             var hw = board.hitWire(mouse.x, mouse.y)
             if (!hw) {
@@ -1286,7 +1286,7 @@ Item {
             board.isolate = {a: w.src, b: w.dst, wire: w.id}
             board.selWire = ""
         }
-        onWheel: board.zoomSmooth((zoomTick.running ? board.zoomGoal : board.zoom) * Math.exp(wheel.angleDelta.y * 0.0015),
+        onWheel: (wheel) => board.zoomSmooth((zoomTick.running ? board.zoomGoal : board.zoom) * Math.exp(wheel.angleDelta.y * 0.0015),
                                   wheel.x, wheel.y)
     }
 
@@ -1386,7 +1386,7 @@ Item {
                                 }
                                 Component.onCompleted: { forceActiveFocus(); cursorPosition = text.length }
                                 Keys.onEscapePressed: finish(false)
-                                Keys.onPressed: {
+                                Keys.onPressed: (event) => {
                                     if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
                                             && (event.modifiers & Qt.ControlModifier)) { finish(true); event.accepted = true }
                                 }
@@ -1402,7 +1402,7 @@ Item {
                     cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                     property point start
                     property var starts: null
-                    onPressed: {
+                    onPressed: (mouse) => {
                         board.forceActiveFocus()
                         board.tipStop()
                         if (mouse.button === Qt.RightButton) { bridge.frameMenu(fr.f.id, board.frameMembers(fr.f)); return }
@@ -1411,7 +1411,7 @@ Item {
                         for (var i = 0; i < ids.length; i++) { var it = board.nodeItems[ids[i]]; s[ids[i]] = [it.x, it.y] }
                         starts = s
                     }
-                    onPositionChanged: {
+                    onPositionChanged: (mouse) => {
                         if (!pressed || !starts) return
                         var p = mapToItem(board, mouse.x, mouse.y)
                         fr.dx = (p.x - start.x) / board.zoom; fr.dy = (p.y - start.y) / board.zoom
@@ -1427,15 +1427,15 @@ Item {
                         fr.dx = 0; fr.dy = 0
                         bridge.setFrame(fr.f.id, {x: nx, y: ny})
                     }
-                    onDoubleClicked: if (mouse.button === Qt.LeftButton) board.frameEdit = {id: fr.f.id, field: "label"}
+                    onDoubleClicked: (mouse) => { if (mouse.button === Qt.LeftButton) board.frameEdit = {id: fr.f.id, field: "label"} }
                 }
                 // corner: resize
                 MouseArea {
                     x: parent.width - 16; y: parent.height - 16; width: 18; height: 18
                     cursorShape: Qt.SizeFDiagCursor
                     property point start
-                    onPressed: { board.forceActiveFocus(); start = mapToItem(board, mouse.x, mouse.y) }
-                    onPositionChanged: {
+                    onPressed: (mouse) => { board.forceActiveFocus(); start = mapToItem(board, mouse.x, mouse.y) }
+                    onPositionChanged: (mouse) => {
                         if (!pressed) return
                         var p = mapToItem(board, mouse.x, mouse.y)
                         fr.dw = (p.x - start.x) / board.zoom; fr.dh = (p.y - start.y) / board.zoom
@@ -1589,7 +1589,7 @@ Item {
                 }
             }
         }
-        Keys.onPressed: {
+        Keys.onPressed: (event) => {
             var n = board.enumShown.length
             event.accepted = true
             if (event.key === Qt.Key_Escape) board.closeEnum()

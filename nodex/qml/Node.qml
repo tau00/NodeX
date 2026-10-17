@@ -207,7 +207,7 @@ Item {
         property point start
         property var starts: null
         property bool moved: false
-        onPressed: {
+        onPressed: (mouse) => {
             board.forceActiveFocus()
             board.tipStop()
             // Modified mouse gestures start on the canvas below (including lazy connect).
@@ -224,7 +224,7 @@ Item {
             moved = false
             starts = board.dragStarts()
         }
-        onPositionChanged: {
+        onPositionChanged: (mouse) => {
             board.mouseWorld = board.toWorld(mapToItem(board, mouse.x, mouse.y).x,
                                             mapToItem(board, mouse.x, mouse.y).y)
             if (!pressed || !starts) return
@@ -234,12 +234,12 @@ Item {
             moved = true
             board.dragTo(starts, dx, dy)
         }
-        onReleased: {
+        onReleased: (mouse) => {
             if (mouse.button === Qt.RightButton) { bridge.nodeMenu(node.nid); return }
             if (moved && starts) board.commitDrag(starts)
             starts = null
         }
-        onDoubleClicked: {
+        onDoubleClicked: (mouse) => {
             if (mouse.button !== Qt.LeftButton || mouse.y >= 28) return
             // On the name itself: rename, as Maya's Node Editor; elsewhere on the header: fold.
             if (!node.dead && mouse.x >= 31 && mouse.x <= 39 + Math.max(16, node.nameW)) { board.startRename(node.nid); return }
@@ -257,13 +257,13 @@ Item {
         cursorShape: Qt.SizeHorCursor
         property real x0
         property real w0
-        onPressed: {
+        onPressed: (mouse) => {
             board.forceActiveFocus()
             board.tipStop()
             x0 = mapToItem(board, mouse.x, mouse.y).x
             w0 = node.width
         }
-        onPositionChanged: {
+        onPositionChanged: (mouse) => {
             if (!pressed) return
             var dx = (mapToItem(board, mouse.x, mouse.y).x - x0) / board.zoom
             node.dragW = Math.max(120, Math.min(900, Math.round(w0 + dx)))
@@ -306,7 +306,7 @@ Item {
                     font.weight: Font.DemiBold
                     font.strikeout: node.dead
                     color: th.ink
-                    onContentWidthChanged: node.nameW = contentWidth
+                    onContentWidthChanged: (contentWidth) => node.nameW = contentWidth
                     Component.onCompleted: node.nameW = contentWidth
                 }
                 // the name editor. Enter or a click elsewhere renames; Esc keeps the old name.
@@ -503,7 +503,7 @@ Item {
                                 hoverEnabled: true
                                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                                 cursorShape: r.valueKind === "num" ? Qt.SizeHorCursor : Qt.PointingHandCursor
-                                onPressed: {
+                                onPressed: (mouse) => {
                                     board.forceActiveFocus()
                                     if (node.dead) return
                                     if (r.valueKind === "enum") {
@@ -514,14 +514,14 @@ Item {
                                     if (board.vdrag) { board.valueCancel(); return }   // the other button cancels (Blender)
                                     board.valueStart(node.nid, r, mapToItem(board, mouse.x, mouse.y), mouse.button, mouse.modifiers)
                                 }
-                                onPositionChanged: if (pressed && board.vdrag) board.valueMove(mapToItem(board, mouse.x, mouse.y), mouse.modifiers)
+                                onPositionChanged: (mouse) => { if (pressed && board.vdrag) board.valueMove(mapToItem(board, mouse.x, mouse.y), mouse.modifiers) }
                                 onReleased: {
                                     if (!board.vdrag) return
                                     var how = board.valueEnd()
                                     if (how === "edit" || how === "multi") { numInput.forceActiveFocus(); numInput.selectAll() }
                                 }
                                 onCanceled: board.valueCancel()
-                                onWheel: {
+                                onWheel: (wheel) => {
                                     if (!(wheel.modifiers & Qt.ControlModifier)) { wheel.accepted = false; return }
                                     board.valueWheel(node.nid, r, wheel.angleDelta.y > 0)
                                 }
@@ -563,15 +563,15 @@ Item {
                                     cursorShape: Qt.CrossCursor
                                     onEntered: board.tipStart(node.nid, r.key, port)
                                     onExited: board.tipStop()
-                                    onPressed: {
+                                    onPressed: (mouse) => {
                                         board.forceActiveFocus()
                                         board.tipStop()
                                         if (mouse.button === Qt.RightButton) { bridge.portMenu(node.nid, r.key); return }
                                         if (node.dead) return
                                         board.wireStart(node.nid, r, port.side, mapToItem(board, mouse.x, mouse.y), mouse.modifiers)
                                     }
-                                    onPositionChanged: if (pressed && board.drag) board.wireMove(mapToItem(board, mouse.x, mouse.y))
-                                    onReleased: if (board.drag) board.wireEnd(mapToItem(board, mouse.x, mouse.y))
+                                    onPositionChanged: (mouse) => { if (pressed && board.drag) board.wireMove(mapToItem(board, mouse.x, mouse.y)) }
+                                    onReleased: (mouse) => { if (board.drag) board.wireEnd(mapToItem(board, mouse.x, mouse.y)) }
                                     onCanceled: board.wireCancel()
                                 }
                             }

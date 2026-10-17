@@ -44,6 +44,20 @@ def _snapshot():
             "sel": [uuids[0]], "lead": uuids[0]}
 
 
+INJECTION = "Injection of parameters into signal handlers is deprecated"
+# Qt messages a probe may log and still pass:
+QT_NOISE = (
+    "QFontDatabase: Cannot find font directory",   # offscreen platform: Maya ships no lib/fonts
+    "Cannot open: qrc:/",                          # Maya's :/ icons exist only in the GUI (see below)
+)
+
+
+def _qt_noise(messages):
+    """The probe's Qt messages minus the allowed noise; a parameter-injection deprecation
+    always stays (a handler reading `mouse` / `event` without declaring it)."""
+    return [m for m in messages if INJECTION in m or not any(n in m for n in QT_NOISE)]
+
+
 def _probe(path):
     env = dict(os.environ)
     env.pop("QT_QPA_PLATFORM", None)
@@ -133,6 +147,7 @@ class QmlTest(unittest.TestCase):
             # copy in nodex/icons is expected to miss here and nowhere else.
             noise = [w for w in r["warnings"] if "Cannot open: qrc:/" not in w]
             self.assertEqual(noise, [])
+            self.assertEqual(_qt_noise(r["qtMessages"]), [])
 
     def test_real_nodes_become_delegates(self):
         r = self.runs[0]
@@ -169,6 +184,7 @@ class QmlTest(unittest.TestCase):
         self.assertIsNotNone(line, (proc.stdout + proc.stderr)[-3000:])
         result = json.loads(line[len('NODEX_KEYS '):])
         self.assertEqual(result['warnings'], [])
+        self.assertEqual(_qt_noise(result['qtMessages']), [])
         self.assertEqual(result['keyboard'], [['copy'], ['paste', 700, 450], ['duplicate'],
                                               ['link', False], ['link', True]])
         self.assertEqual(result['host'], [], result)
