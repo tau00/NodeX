@@ -38,7 +38,7 @@ Sections: [Navigation](#navigation) - [Selection](#selection) - [Wiring](#wiring
 | Del / Backspace | Disconnect the selected wire, else delete selected nodes |
 | Double-click a wire | Isolate its two nodes; click the canvas to leave |
 | RMB wire > Inbetween | Insert a utility node into the connection |
-| RMB on a port | Copy attribute name, node.attr or full DAG path |
+| RMB on a port or attribute name | Select connected nodes; copy attribute name, node.attr or full DAG path |
 | W | Node links: one wire per node pair |
 
 ## Bulk connect
@@ -130,6 +130,13 @@ Right-click a wire and choose `Inbetween > Utility nodes` to insert a node into 
 The utility list is filtered against both ends of the wire. Choose the compatible input and
 output attributes in the next dialog, then press `Insert`. Cancelling creates nothing. Insertion
 keeps other branches intact and undoes in one step; existing hidden conversion factors are retained.
+
+Right-click a port or an attribute name and choose `Select connected nodes` to replace the
+selection with every node wired to that attribute, its children and its array elements. A port
+follows its side (inputs or outputs); a name uses the inputs when the attribute has any, else the
+outputs. Hidden unit conversions are looked through; an expanded one is selected itself. Nodes not
+on the board are added first; a locked graph, or one that would pass `Options > Node limit`, is
+left unchanged. Maya's default nodes such as `time1` are skipped.
 
 Right-click any node and choose `Delete inbetween` to reconnect its active sources to its
 receivers and delete that node. This works for ordinary nodes as well as inserted utilities.

@@ -953,13 +953,18 @@ class Bridge(QtCore.QObject):
 
     # ================================================================== slots: menus
 
-    @QtCore.Slot(str, str)
-    def portMenu(self, u, path):
+    @QtCore.Slot(str, str, str)
+    def portMenu(self, u, path, side):
         plug = self._plug(u, path)
         if not plug:
             return
         forms = ops.copy_forms(plug)
         menu = QtWidgets.QMenu()
+        side_used, shown, _ = self._connected(u, path, side)
+        sel = menu.addAction("Select connected nodes (%d)" % len(shown))
+        sel.setEnabled(bool(shown) and u not in self.dead)
+        sel.triggered.connect(lambda _=False: self.selectConnected(u, path, side_used))
+        menu.addSeparator()
         for key, label in (("attr", "Copy attribute name"), ("node", "Copy node.attr"),
                            ("dag", "Copy full DAG path")):
             act = menu.addAction("%s    %s" % (label, forms[key]))
@@ -974,6 +979,45 @@ class Bridge(QtCore.QObject):
         pin.setChecked(path in v.pinned)
         pin.triggered.connect(lambda _=False: self._toggle_pin(u, path))
         self._popup(menu)
+
+    def _connected(self, u, path, side):
+        """Nodes wired to one attribute on one side that the board can show:
+        (side_used, shown, skipped default/shared nodes)."""
+        side_used, found = model.plug_neighbours(u, path, side, on_board=self.infos)
+        shown = [v for v in found if v in self.infos or model.is_board_candidate(model.obj_from_uuid(v))]
+        skipped = len(found) - len(shown)
+        if self.shapes == "none":
+            # A shape-free board shows the transform in place of each shape.
+            shown = [v for v in dict.fromkeys(model.transform_of(v) for v in shown) if v != u]
+        return side_used, shown, skipped
+
+    @QtCore.Slot(str, str, str)
+    def selectConnected(self, u, path, side):
+        """Replace the selection with the nodes wired to one attribute on one side, adding the
+        ones not on the board first; refused as a whole when locked or over the node limit."""
+        plug = self._plug(u, path)
+        if u in self.dead or not plug:
+            return
+        side_used, shown, skipped = self._connected(u, path, side)
+        where = "%s (%s)" % (ops.copy_forms(plug)["node"], "inputs" if side_used == "in" else "outputs")
+        more = "; %d default node%s skipped" % (skipped, "" if skipped == 1 else "s") if skipped else ""
+        if not shown:
+            self.status("No nodes to select connected to %s%s" % (where, more))
+            return
+        missing = [v for v in shown if v not in self.infos]
+        if missing and self.locked:
+            self.status("Unlock the graph to show connected nodes")
+            return
+        if len(self.infos) + len(missing) > self.max_nodes:
+            self.status("Connected nodes need %d free slots; raise Options > Node limit" % len(missing))
+            return
+        if missing:
+            self.add_nodes(missing, cursor=None, arrange_new=False)
+        self.sel = [v for v in shown if v in self.infos]
+        self._emit_selection()
+        self._select_in_maya()
+        self.status("Selected %d node%s connected to %s%s"
+                    % (len(self.sel), "" if len(self.sel) == 1 else "s", where, more))
 
     def _toggle_pin(self, u, path):
         v = self._view_for(u)

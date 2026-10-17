@@ -26,7 +26,7 @@ SECTIONS = [
         ("Del / Backspace", "Disconnect the selected wire, else delete selected nodes"),
         ("Double-click a wire", "Isolate its two nodes; click the canvas to leave"),
         ("RMB wire > Inbetween", "Insert a utility node into the connection"),
-        ("RMB on a port", "Copy attribute name, node.attr or full DAG path"),
+        ("RMB on a port or attribute name", "Select connected nodes; copy attribute name, node.attr or full DAG path"),
         ("W", "Node links: one wire per node pair"),
     ]),
     ("Bulk connect", [

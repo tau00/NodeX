@@ -566,7 +566,7 @@ Item {
                                     onPressed: (mouse) => {
                                         board.forceActiveFocus()
                                         board.tipStop()
-                                        if (mouse.button === Qt.RightButton) { bridge.portMenu(node.nid, r.key); return }
+                                        if (mouse.button === Qt.RightButton) { bridge.portMenu(node.nid, r.key, port.side); return }
                                         if (node.dead) return
                                         board.wireStart(node.nid, r, port.side, mapToItem(board, mouse.x, mouse.y), mouse.modifiers)
                                     }
@@ -577,14 +577,25 @@ Item {
                             }
                         }
 
-                        // Hovering the label also explains the attribute
+                        // Hovering the label also explains the attribute; RMB opens the
+                        // attribute menu (inputs side when wired). LMB falls through to the body.
                         MouseArea {
                             visible: row.isPort
                             x: lbl.x; width: lbl.width; height: row.height
                             hoverEnabled: true
-                            acceptedButtons: Qt.NoButton
+                            acceptedButtons: Qt.RightButton
                             onEntered: board.tipStart(node.nid, r.key, lbl)
                             onExited: board.tipStop()
+                            onPressed: (mouse) => {
+                                // Knife and lazy connect start on the canvas, as from the body.
+                                if (mouse.modifiers & (Qt.AltModifier | Qt.ControlModifier | Qt.ShiftModifier)) {
+                                    mouse.accepted = false
+                                    return
+                                }
+                                board.forceActiveFocus()
+                                board.tipStop()
+                                bridge.portMenu(node.nid, r.key, "")
+                            }
                         }
                     }
                 }
