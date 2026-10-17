@@ -144,6 +144,7 @@ Item {
         return g
     }
     ShaderEffect {
+        objectName: "greekShader"
         visible: node.far && node.info !== null
         x: -8
         y: -18
@@ -175,64 +176,7 @@ Item {
         property vector4d r13: Qt.vector4d(g[52], g[53], g[54], g[55])
         property vector4d r14: Qt.vector4d(g[56], g[57], g[58], g[59])
         property vector4d r15: Qt.vector4d(g[60], g[61], g[62], g[63])
-        fragmentShader: "
-            varying highp vec2 qt_TexCoord0;
-            uniform highp vec2 sz;
-            uniform highp float px;
-            uniform highp float nodeW;
-            uniform highp float nameW;
-            uniform highp float typeW;
-            uniform lowp vec4 ink;
-            uniform lowp vec4 text;
-            uniform lowp vec4 faint;
-            uniform lowp vec4 field;
-            uniform lowp float qt_Opacity;
-            uniform highp vec4 r0; uniform highp vec4 r1; uniform highp vec4 r2; uniform highp vec4 r3;
-            uniform highp vec4 r4; uniform highp vec4 r5; uniform highp vec4 r6; uniform highp vec4 r7;
-            uniform highp vec4 r8; uniform highp vec4 r9; uniform highp vec4 r10; uniform highp vec4 r11;
-            uniform highp vec4 r12; uniform highp vec4 r13; uniform highp vec4 r14; uniform highp vec4 r15;
-            highp vec2 p;
-            lowp vec4 acc;
-            // coverage of a rounded bar [x0, x1] x [cy - h/2, cy + h/2], antialiased over one pixel
-            void bar(highp float x0, highp float x1, highp float cy, highp float h, lowp vec4 c) {
-                highp float r = 0.5 * h;
-                highp vec2 q = vec2(clamp(p.x, x0 + r, max(x0 + r, x1 - r)), cy);
-                highp float d = length(p - q) - r;
-                lowp float a = c.a * clamp(0.5 - d / px, 0.0, 1.0);
-                acc = mix(acc, vec4(c.rgb, 1.0), a);
-            }
-            void row(highp float f1, highp float f2) {
-                if (f1 < 0.0) return;
-                highp float cy = floor(f1 / 512.0), lx = f1 - cy * 512.0;
-                if (abs(p.y - cy) > 9.0) return;
-                highp float lw = floor(f2 / 2048.0), rest = f2 - lw * 2048.0;
-                highp float inp = floor(rest / 1024.0); rest -= inp * 1024.0;
-                highp float outp = floor(rest / 512.0), bw = rest - outp * 512.0;
-                if (inp > 0.0) bar(0.0, 0.0, cy, 7.0, vec4(faint.rgb, 0.9));
-                if (outp > 0.0) bar(nodeW, nodeW, cy, 7.0, vec4(faint.rgb, 0.9));
-                bar(lx, lx + lw, cy, 7.0, vec4(text.rgb, 0.55));
-                if (bw > 0.0) {
-                    highp float bx1 = nodeW - 12.0 - outp * 4.0;
-                    bar(bx1 - bw, bx1, cy, 14.0, vec4(field.rgb, 1.0));
-                }
-            }
-            void main() {
-                p = qt_TexCoord0 * sz - vec2(8.0, 18.0);
-                acc = vec4(0.0);
-                bar(2.0, 2.0 + typeW, -11.0, 7.0, vec4(faint.rgb, 0.8));
-                bar(35.0, 35.0 + nameW, 14.0, 9.0, vec4(ink.rgb, 0.7));
-                if (p.y > 28.0) {
-                    row(r0.x, r0.y); row(r0.z, r0.w); row(r1.x, r1.y); row(r1.z, r1.w);
-                    row(r2.x, r2.y); row(r2.z, r2.w); row(r3.x, r3.y); row(r3.z, r3.w);
-                    row(r4.x, r4.y); row(r4.z, r4.w); row(r5.x, r5.y); row(r5.z, r5.w);
-                    row(r6.x, r6.y); row(r6.z, r6.w); row(r7.x, r7.y); row(r7.z, r7.w);
-                    row(r8.x, r8.y); row(r8.z, r8.w); row(r9.x, r9.y); row(r9.z, r9.w);
-                    row(r10.x, r10.y); row(r10.z, r10.w); row(r11.x, r11.y); row(r11.z, r11.w);
-                    row(r12.x, r12.y); row(r12.z, r12.w); row(r13.x, r13.y); row(r13.z, r13.w);
-                    row(r14.x, r14.y); row(r14.z, r14.w); row(r15.x, r15.y); row(r15.z, r15.w);
-                }
-                gl_FragColor = acc * qt_Opacity;     // bar() accumulates premultiplied
-            }"
+        fragmentShader: "shaders/greek.frag.qsb"     // from shaders/greek.frag (tools/build_shaders.py)
     }
 
     // Selection ring, drawn over the plate edge

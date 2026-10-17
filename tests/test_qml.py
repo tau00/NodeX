@@ -187,6 +187,29 @@ class QmlTest(unittest.TestCase):
         self.assertTrue({(t['nid'], t['key']) for t in result['fanoutExpected']}.issubset(set(actual)), result)
         self.assertEqual(call[3], result['fanoutPreview'])
 
+    def test_shaders_compile_on_d3d11_and_opengl(self):
+        # The probe needs the real `windows` platform (offscreen never compiles a shader), so a
+        # desktop session. A shader missing its HLSL keeps `status` Compiled on D3D11 and only
+        # shows as a pipeline message and an effect that draws nothing; a bad .qsb is `Error`.
+        # Only the first instance of a shader reports Compiled: the others hit Qt's shader
+        # cache and stay Uncompiled.
+        for backend, api in (("d3d11", "Direct3D11"), ("opengl", "OpenGL")):
+            env = dict(os.environ, QSG_RHI_BACKEND=backend)
+            proc = subprocess.run([sys.executable, os.path.join(HERE, "_shader_probe.py"), self.path],
+                                  env=env, capture_output=True, text=True, timeout=60)
+            line = next((s for s in proc.stdout.splitlines() if s.startswith("NODEX_SHADERS ")), None)
+            self.assertIsNotNone(line, (proc.stdout + proc.stderr)[-3000:])
+            r = json.loads(line[len("NODEX_SHADERS "):])
+            self.assertEqual(r["api"], api, r)
+            self.assertEqual(r["errors"], [], r)
+            self.assertEqual(r["qtMessages"], [], r)
+            for name in ("gridShader", "greekShader"):
+                states = [s["status"] for s in r["status"][name]]
+                self.assertIn("Compiled", states, (backend, name, r["status"][name]))
+                self.assertEqual(set(states) - {"Compiled", "Uncompiled"}, set(),
+                                 (backend, name, r["status"][name]))
+                self.assertTrue(r["draws"][name], (backend, name))
+
     def test_inbetween_context_menu_attribute_choice_and_cancel(self):
         proc = subprocess.run([sys.executable, os.path.join(HERE, '_inbetween_probe.py')],
                               capture_output=True, text=True, timeout=30)

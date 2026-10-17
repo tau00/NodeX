@@ -55,6 +55,17 @@ def signals():
     return out
 
 
+def capture_messages():
+    """Collect every Qt message (qWarning and friends) into the returned list. Shader and
+    deprecation messages go to the message handler, never to QQmlEngine.warnings."""
+    messages = []
+
+    def handler(kind, context, text):
+        messages.append(text)
+    QtCore.qInstallMessageHandler(handler)
+    return messages
+
+
 def pump(ms):
     t = QtCore.QElapsedTimer()
     t.start()
@@ -68,6 +79,7 @@ def main():
         with open(sys.argv[1]) as f:
             snap = json.load(f)
     res = {"signals": signals()}
+    messages = capture_messages()
     b = make_bridge(snap)
     q = QtQuickWidgets.QQuickWidget()
     q.setResizeMode(QtQuickWidgets.QQuickWidget.SizeRootObjectToView)
@@ -140,6 +152,7 @@ def main():
             img.save(sys.argv[2])
         res["frame"] = [img.width(), img.height()]
     res["warnings"] = warnings
+    res["qtMessages"] = messages
     sys.stdout.write("NODEX_PROBE " + json.dumps(res) + "\n")
     sys.stdout.flush()
 

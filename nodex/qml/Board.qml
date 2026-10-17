@@ -841,25 +841,15 @@ Item {
     // and lagged zooming out. Zoomed far out the step doubles so dots never merge into a haze.
     ShaderEffect {
         id: grid
+        objectName: "gridShader"
         anchors.fill: parent
         visible: board.showGrid
         readonly property real base: board.gridStep * board.zoom
-        property real step: { var s = base; while (s < 8) s *= 2; return s }
-        property point origin: Qt.point(board.panX + (base - step) / 2, board.panY + (base - step) / 2)
+        property real cell: { var s = base; while (s < 8) s *= 2; return s }
+        property point origin: Qt.point(board.panX + (base - cell) / 2, board.panY + (base - cell) / 2)
         property size res: Qt.size(width, height)
         property real alpha: board.th.gridAlpha
-        fragmentShader: "
-            varying highp vec2 qt_TexCoord0;
-            uniform highp float step;
-            uniform highp vec2 origin;
-            uniform highp vec2 res;
-            uniform lowp float alpha;
-            uniform lowp float qt_Opacity;
-            void main() {
-                highp vec2 c = mod(qt_TexCoord0 * res - origin, step) - 0.5 * step;
-                lowp float a = alpha * qt_Opacity * (1.0 - smoothstep(0.9, 1.45, length(c)));
-                gl_FragColor = vec4(a, a, a, a);
-            }"
+        fragmentShader: "shaders/grid.frag.qsb"      // from shaders/grid.frag (tools/build_shaders.py)
     }
 
     // Wires: a screen-space Canvas (QPainter antialiasing at every zoom), painted

@@ -7,16 +7,20 @@ Archive layout (unpack anywhere, drag install.py into Maya):
     NodeX-<version>/install.py, README.txt, HOTKEYS.md
     NodeX-<version>/NodeX/scripts/userSetup.py
     NodeX-<version>/NodeX/scripts/nodex/...   (package + palette.json, no tests helpers)
+    NodeX-<version>/NodeX/scripts/nodex/qml/shaders/*.qsb   (compiled shaders, no sources)
+
+Refuses to build while tools/build_shaders.py --check reports a stale shader.
 """
 import os
 import re
 import shutil
+import subprocess
 import sys
 import zipfile
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DIST = os.path.join(ROOT, "dist")
-SKIP_FILES = {"fixture.py"}                       # test rig only
+SKIP_FILES = {"fixture.py", "stamp.json"}         # test rig, shader build record
 
 
 def version():
@@ -25,10 +29,18 @@ def version():
 
 
 def _ignore(folder, names):
-    return [n for n in names if n == "__pycache__" or n.endswith(".pyc") or n in SKIP_FILES]
+    return [n for n in names if n == "__pycache__" or n.endswith((".pyc", ".frag")) or n in SKIP_FILES]
+
+
+def check_shaders():
+    p = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "build_shaders.py"), "--check"],
+                       capture_output=True, text=True)
+    if p.returncode:
+        sys.exit("shaders are stale, run python tools/build_shaders.py first:\n" + p.stdout + p.stderr)
 
 
 def build():
+    check_shaders()
     ver = version()
     name = "NodeX-%s" % ver
     stage = os.path.join(DIST, name)

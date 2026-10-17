@@ -3,12 +3,13 @@ import json
 import os
 import sys
 
-from _qml_probe import app, make_bridge, pump
+from _qml_probe import app, capture_messages, make_bridge, pump
 from PySide6 import QtCore, QtGui, QtQml, QtQuickWidgets, QtWidgets
 from nodex import panel
 
 with open(sys.argv[1]) as stream:
     snap = json.load(stream)
+messages = capture_messages()
 b = make_bridge(snap)
 calls = []
 b.copyFragment = lambda: calls.append(['copy'])
@@ -139,5 +140,6 @@ sys.stdout.write('NODEX_KEYS ' + json.dumps({
     'fanoutStarted': fanout_started, 'fanout': fanout_calls, 'fanoutCancelled': fanout_cancelled,
     'fanoutPreview': preview, 'fanoutExpected': targets, 'fanoutSource': source,
     'warnings': [w for w in warnings if 'Cannot open: qrc:/' not in w],
+    'qtMessages': messages,
 }) + '\n')
 sys.stdout.flush()
