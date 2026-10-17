@@ -1,0 +1,63 @@
+# Release package: pushing a tag vX.Y.Z builds dist/NodeX-X.Y.Z.zip with build.py and attaches it
+# to a draft GitHub release (notes from docs/release-notes/X.Y.Z.md). Review the draft, then publish.
+# Run by hand (Actions > Release > Run workflow) to build the zip as an artifact, with no release.
+#
+# Packaging only: the test suite needs Maya's mayapy and a desktop session (the shader test opens
+# real windows), so run tests\run.bat locally before tagging. build.py is stdlib-only and its
+# shader check compares committed hashes, so no Maya or Qt SDK is needed here.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Read version
+        id: ver
+        shell: bash
+        run: |
+          ver=$(python -c "import build; print(build.version())")
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            if [ "${GITHUB_REF_NAME#v}" != "$ver" ]; then
+              echo "::error::tag $GITHUB_REF_NAME does not match VERSION $ver in nodex/startup.py"
+              exit 1
+            fi
+            if [ ! -f "docs/release-notes/$ver.md" ]; then
+              echo "::error::missing docs/release-notes/$ver.md"
+              exit 1
+            fi
+          fi
+
+      - name: Build archive
+        run: python build.py
+
+      - name: Upload artifact
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: NodeX-${{ steps.ver.outputs.version }}
+          path: dist/NodeX-${{ steps.ver.outputs.version }}.zip
+
+      - name: Create draft release
+        if: github.ref_type == 'tag'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ver="${{ steps.ver.outputs.version }}"
+          gh release create "$GITHUB_REF_NAME" "dist/NodeX-$ver.zip" \
+            --draft --title "NodeX $ver" --notes-file "docs/release-notes/$ver.md"

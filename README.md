@@ -61,13 +61,24 @@ tests/        unittest suites and QML probes
 build.py      packs dist/NodeX-<version>.zip
 ```
 
-Tests run headless under `mayapy`:
+Tests run under `mayapy`, from a desktop session (the shader test opens real windows):
 
 ```
 tests\run.bat
 ```
 
 Set `MAYAPY` to point at another Maya version (default: Maya 2026 in `Program Files`).
+
+## Releasing
+
+1. Set `VERSION` in `nodex/startup.py` and write `docs/release-notes/<version>.md`.
+2. Run `tests\run.bat` and `python build.py` locally, then commit and push `main`.
+3. Tag and push: `git tag v<version>` then `git push origin v<version>`.
+
+The tag starts the Release workflow (`.github/workflows/release.yml`). It checks that the tag
+matches `VERSION` and that the notes exist, builds the zip, and attaches it to a draft GitHub
+release. Check the draft and publish it. Running the workflow by hand builds the zip as an
+artifact, with no release. CI doesn't run the tests, because they need Maya.
 
 ## License
 
