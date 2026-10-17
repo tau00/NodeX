@@ -303,6 +303,73 @@ class ModelTest(unittest.TestCase):
         self.assertGreater(len(allup), len(near))
         self.assertEqual(set(cut), near)          # breadth-first: hop 1 fills the limit first
 
+    def test_plug_neighbours_sides(self):
+        u = self.u
+        self.assertEqual(model.plug_neighbours(u["md"], "input1X", "in"), ("in", [u["db"]]))
+        self.assertEqual(model.plug_neighbours(u["md"], "outputX", "out"), ("out", [u["j2"]]))
+        side, found = model.plug_neighbours(u["dm1"], "outputTranslate", "out")
+        self.assertEqual(side, "out")
+        self.assertCountEqual(found, [u["pma"], u["db"]])      # Maya's destinations() order
+        self.assertEqual(model.plug_neighbours(u["md"], "input1X", "out"), ("out", []))
+        self.assertEqual(model.plug_neighbours(u["md"], "input1", "in")[1], [u["db"], u["dm2"]])
+        self.assertEqual(model.plug_neighbours(u["md"], "noSuchAttr", "in"), ("in", []))
+        self.assertEqual(model.plug_neighbours("00000000-0000-0000-0000-000000000000",
+                                               "translate", ""), ("", []))
+
+    def test_plug_neighbours_compound_children(self):
+        a = cmds.createNode("transform", name="drv")
+        b = cmds.createNode("transform", name="drn")
+        cmds.connectAttr(a + ".translateX", b + ".translateX")
+        ua, ub = model.uuids_of([a, b])
+        self.assertEqual(model.plug_neighbours(ub, "translate", "in"), ("in", [ua]))
+        # only the parent is wired: its children are not connections of their own
+        self.assertEqual(model.plug_neighbours(self.u["mid"], "translateX", "in"), ("in", []))
+        self.assertEqual(model.plug_neighbours(self.u["mid"], "translate", "in"),
+                         ("in", [self.u["pma"]]))
+
+    def test_plug_neighbours_arrays_and_nested_multi(self):
+        bm = cmds.createNode("blendMatrix")
+        cmds.connectAttr(self.n["j1"] + ".worldMatrix[0]", bm + ".target[0].targetMatrix")
+        ubm = model.uuids_of([bm])[0]
+        # find_plug resolves "worldMatrix" to worldMatrix[0], wired to two nodes
+        side, found = model.plug_neighbours(self.u["j1"], "worldMatrix", "out")
+        self.assertEqual(side, "out")
+        self.assertCountEqual(found, [self.u["dm1"], ubm])
+        self.assertEqual(model.plug_neighbours(ubm, "target", "in"), ("in", [self.u["j1"]]))
+        self.assertEqual(model.plug_neighbours(self.u["pma"], "input3D", "in"),
+                         ("in", [self.u["dm1"], self.u["dm2"]]))
+
+    def test_plug_neighbours_conversion(self):
+        u = self.u
+        conv = model.uuid_of(model.find_plug(u["md"], "input1Y").sourceWithConversion().node())
+        self.assertEqual(model.plug_neighbours(u["md"], "input1Y", "in"), ("in", [u["dm2"]]))
+        self.assertEqual(model.plug_neighbours(u["md"], "input1Y", "in", on_board={conv}),
+                         ("in", [conv]))
+        self.assertEqual(model.plug_neighbours(u["dm2"], "outputRotateZ", "out"), ("out", [u["md"]]))
+        self.assertEqual(model.plug_neighbours(u["dm2"], "outputRotateZ", "out", on_board={conv}),
+                         ("out", [conv]))
+        # the expanded conversion node itself
+        self.assertEqual(model.plug_neighbours(conv, "input", "in"), ("in", [u["dm2"]]))
+
+    def test_plug_neighbours_auto_side(self):
+        mid = self.u["mid"]
+        self.assertEqual(model.plug_neighbours(mid, "translate", ""), ("in", [self.u["pma"]]))
+        x = cmds.createNode("transform", name="follower")
+        cmds.connectAttr(self.n["mid"] + ".translate", x + ".translate")
+        self.assertEqual(model.plug_neighbours(mid, "translate", ""), ("in", [self.u["pma"]]))
+        self.assertEqual(model.plug_neighbours(mid, "translate", "out"),
+                         ("out", model.uuids_of([x])))
+        self.assertEqual(model.plug_neighbours(self.u["db"], "distance", ""), ("out", [self.u["md"]]))
+        self.assertEqual(model.plug_neighbours(self.u["md"], "operation", ""), ("out", []))
+
+    def test_plug_neighbours_message(self):
+        net = cmds.createNode("network", name="meta")
+        cmds.addAttr(net, ln="rig", at="message")
+        cmds.connectAttr(self.n["mid"] + ".message", net + ".rig")
+        unet = model.uuids_of([net])[0]
+        self.assertEqual(model.plug_neighbours(self.u["mid"], "message", ""), ("out", [unet]))
+        self.assertEqual(model.plug_neighbours(unet, "rig", ""), ("in", [self.u["mid"]]))
+
     def test_plug_info(self):
         info = model.plug_info(self.u["md"], "input1Y")
         self.assertEqual(info["io"], "input")

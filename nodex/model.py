@@ -1138,6 +1138,55 @@ def neighbours(uuid, direction):
     return out
 
 
+def _plug_tree(plug):
+    """`plug` and its descendants: compound children and connected array elements, recursively.
+    Each plug reports only its own connections, so a wired child is found from its parent."""
+    out = [plug]
+    if plug.isArray and not plug.isElement:
+        for i in range(plug.numConnectedElements()):
+            out.extend(_plug_tree(plug.connectionByPhysicalIndex(i)))
+    elif plug.isCompound:
+        for k in range(plug.numChildren()):
+            out.extend(_plug_tree(plug.child(k)))
+    return out
+
+
+def _expanded_conversion(dst, near, on_board):
+    """The conversion node between `dst` and its source when it is on the board, else None."""
+    raw = dst.sourceWithConversion()
+    if raw.isNull or raw.node() == near:
+        return None
+    conv = raw.node()
+    if om.MFnDependencyNode(conv).typeName in CONVERSION_TYPES and uuid_of(conv) in on_board:
+        return conv
+    return None
+
+
+def plug_neighbours(uuid, path, side, on_board=()):
+    """Nodes wired to one attribute (with its children and elements) on one side, as the board
+    draws them: through hidden conversion nodes, stopping at ones on the board.
+
+    `side` is "in", "out" or "" (inputs when there are any, else outputs).
+    Returns (side_used, [uuid, ...]) in first-found order, without `uuid` itself."""
+    plug = find_plug(uuid, path)
+    if plug is None:
+        return side, []
+    ins, outs = [], []
+    for p in _plug_tree(plug):
+        if p.isDestination:
+            src = p.source()
+            if not src.isNull:
+                conv = _expanded_conversion(p, src.node(), on_board)
+                ins.append(conv if conv is not None else src.node())
+        if p.isSource:
+            for d in p.destinations():
+                conv = _expanded_conversion(d, p.node(), on_board)
+                outs.append(conv if conv is not None else d.node())
+    side_used = side or ("in" if ins else "out")
+    found = (uuid_of(o) for o in (ins if side_used == "in" else outs))
+    return side_used, [u for u in dict.fromkeys(found) if u != uuid]
+
+
 def connections_between(a, b, limit=10000):
     """Union of directed connection paths between two nodes, in both directions; no scene edits."""
     endpoints, adjacency = {a, b}, {}
