@@ -22,6 +22,7 @@ LINKS_AUTO = 1200      # wires on a tab above which "auto" draws node links (one
 MAX_NODES = 500        # default node limit of a tab, like the limit of Maya's own Node Editor
 MAX_NODES_VAR = "nodexMaxNodes"   # optionVar: a preference of the machine, not of the scene
 SHAPES_VAR = "nodexShapes"        # optionVar: Display group mode, kept across panel rebuilds
+DEPTH_VAR = "nodexDepth"          # optionVar: traversal depth, -1 = unlimited
 GRID = 22
 
 
@@ -37,6 +38,14 @@ def shapes_pref():
         if mode in ("all", "except", "none"):
             return mode
     return "except"
+
+
+def depth_pref():
+    """Traversal depth of the last session; None = unlimited."""
+    if cmds.optionVar(exists=DEPTH_VAR):
+        d = int(cmds.optionVar(q=DEPTH_VAR))
+        return None if d < 0 else d
+    return 1
 
 
 def _js(v):
@@ -84,7 +93,7 @@ class Bridge(QtCore.QObject):
         self.sync.beforeSave.connect(self.save_store)
         self.sync_on = True
         self.locked = False
-        self.depth = 1
+        self.depth = depth_pref()       # None = unlimited
         self.max_nodes = max_nodes_pref()
         self.shapes = shapes_pref()     # all | except | none (Display group)
         self.infos = {}                 # uuid -> node info on the active tab
@@ -1729,6 +1738,7 @@ class Bridge(QtCore.QObject):
     def clearGraph(self):
         if self.locked:
             return
+        self.tab["graph"] = None
         self.remove_nodes(list(self.infos), remember=False)
 
     def _seeds(self):
@@ -1772,6 +1782,27 @@ class Bridge(QtCore.QObject):
         if not seeds:
             self.status("Select nodes in the scene to graph their connections")
             return
+        # Remembered before the shape filter, so a re-run under another Display mode filters afresh.
+        self.tab["graph"] = {"direction": direction, "seeds": list(seeds)}
+        self._graph(seeds, direction)
+
+    def set_depth(self, d):
+        """A new traversal depth (None = unlimited) re-runs the tab's last Graph command from
+        the nodes it started at, not from the current selection (clicking board nodes moves it)."""
+        if d == self.depth:
+            return
+        self.depth = d
+        cmds.optionVar(intValue=(DEPTH_VAR, -1 if d is None else int(d)))
+        last = self.tab.get("graph")
+        if self.locked or not last:
+            return
+        seeds = [u for u in last["seeds"] if model.path_of(u)]
+        if not seeds:
+            self.status("The graphed nodes are gone; graph again")
+            return
+        self._graph(seeds, last["direction"])
+
+    def _graph(self, seeds, direction):
         # One spare node tells "exactly at the limit" from "cut at the limit". Shapes filtered
         # out below make the cut land a little short of the limit; not worth a second walk.
         # Shapes walk with their transforms (a mesh's history hangs off the shape, not the

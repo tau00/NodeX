@@ -26,6 +26,7 @@ def new_tab(name):
         "mode": "connected",
         "bookmarks": [],
         "frames": [],      # Blender frames: {"id", "x", "y", "w", "h", "color", "label", "text"}
+        "graph": None,     # last Graph command: {"direction": "up"|"down"|"both", "seeds": [uuid]}
     }
 
 

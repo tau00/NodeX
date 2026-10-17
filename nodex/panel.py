@@ -362,7 +362,8 @@ class NodeXPanel(QtWidgets.QWidget):
                 bh.addWidget(grip)
             for key, icon, tip in items:
                 if key == "depth":
-                    w = QtWidgets.QLineEdit("1")
+                    d = self.bridge.depth
+                    w = QtWidgets.QLineEdit("∞" if d is None else str(d))
                     w.setFixedWidth(30)
                     w.setAlignment(QtCore.Qt.AlignCenter)
                     w.setToolTip(tip)
@@ -652,7 +653,7 @@ class NodeXPanel(QtWidgets.QWidget):
     def _set_depth(self, d, less=False):
         if d is None and less:
             d = 5
-        self.bridge.depth = d
+        self.bridge.set_depth(d)
         self.depth_field.setText("\u221e" if d is None else str(d))
 
     def _depth_edited(self):
