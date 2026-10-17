@@ -4,7 +4,7 @@ Node icons (:/out_<type>.png) go to ./icons, the Node Editor toolbar icons (the 
 nodeEdCreateToolbar in scripts/others/nodeEditorPanel.mel) go to ./icons/toolbar.
 The HiDPI variant (<name>_200.png, 2x) is preferred when it exists.
 
-Run with mayapy: "C:/Program Files/Autodesk/Maya2024/bin/mayapy.exe" tools/extract_icons.py
+Run with mayapy: "C:/Program Files/Autodesk/Maya2026/bin/mayapy.exe" tools/extract_icons.py
 Toolbar icons only resolve inside the Maya GUI: exec this file from the Script Editor or commandPort.
 """
 import os

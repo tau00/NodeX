@@ -8,7 +8,8 @@ by content (git keeps no file times, so a fresh clone must still pass).
 
 Usage:
   python tools/build_shaders.py            compile every shader, rewrite stamp.json
-  python tools/build_shaders.py --check    exit 1 if a .qsb is missing or older than its source
+  python tools/build_shaders.py --check    exit 1 if a .qsb is missing, differs from its source
+                                           or has no source left
 qsb.exe: %QSB%, else %MAYA_LOCATION%/devkit/Qt/bin/qsb.exe, else Maya 2026's default install.
 """
 import glob
@@ -53,13 +54,17 @@ def read_stamp():
 
 
 def stale():
-    """Names of shaders whose .qsb is missing or was not built from the current source."""
+    """Problems as (file, fix): a .qsb missing or not built from the current source, or a .qsb
+    whose source is gone (build.py would still ship it)."""
     built = read_stamp()["sources"]
     out = []
     for src in sources():
         name = os.path.basename(src)
         if not os.path.isfile(src + ".qsb") or built.get(name) != sha256(src):
-            out.append(name)
+            out.append((name, "run python tools/build_shaders.py"))
+    for qsb in sorted(glob.glob(os.path.join(SHADERS, "*.qsb"))):
+        if not os.path.isfile(qsb[:-len(".qsb")]):
+            out.append((os.path.basename(qsb), "no source, delete it"))
     return out
 
 
@@ -67,8 +72,10 @@ def build():
     exe = qsb_exe()
     if not os.path.isfile(exe):
         sys.exit("qsb.exe not found at %s (set QSB or MAYA_LOCATION)" % exe)
-    version = subprocess.run([exe, "--version"], capture_output=True, text=True,
-                             check=True).stdout.strip()
+    p = subprocess.run([exe, "--version"], capture_output=True, text=True)
+    if p.returncode:
+        sys.exit("%s --version failed:\n%s%s" % (exe, p.stdout, p.stderr))
+    version = p.stdout.strip()
     stamp = {"qsb": version, "sources": {}}
     for src in sources():
         name = os.path.basename(src)
@@ -87,7 +94,7 @@ def build():
 if __name__ == "__main__":
     if "--check" in sys.argv[1:]:
         bad = stale()
-        for name in bad:
-            print("stale: %s (run python tools/build_shaders.py)" % name)
+        for name, fix in bad:
+            print("stale: %s (%s)" % (name, fix))
         sys.exit(1 if bad else 0)
     build()

@@ -26,6 +26,8 @@ Keys: see [HOTKEYS.md](HOTKEYS.md), or Help > Keys inside the editor.
 
 - Windows, Maya 2025 or newer (PySide6), tested on Maya 2026.
 - Maya 2022–2024: use NodeX 1.0.0. Installing 2.0.0 removes NodeX from those versions on the same machine.
+  The two releases share one install, so only one can be installed per user: running the 1.0.0
+  installer afterwards replaces 2.0.0 for every Maya version.
 
 ## Install
 
@@ -35,6 +37,9 @@ Keys: see [HOTKEYS.md](HOTKEYS.md), or Help > Keys inside the editor.
 
 This installs a per-user Maya module, a shelf button and a **Windows > NodeX Node Editor** menu
 item. Your own `userSetup.py` is not touched. Details: [installer/README.txt](installer/README.txt).
+
+Installed a newer Maya later? Drag `install.py` into it once: the module is only enabled for the
+Maya versions it was installed from.
 
 Run from Python without installing:
 

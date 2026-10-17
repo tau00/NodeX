@@ -7,7 +7,7 @@ palette.json (read by nodex/theme.py).
 
 Usage:
   python tools/build_palette.py [path/to/userRGBColors2.mel]
-Default path: %USERPROFILE%/Documents/maya/2024/prefs/userRGBColors2.mel
+Default path: %USERPROFILE%/Documents/maya/2026/prefs/userRGBColors2.mel
 """
 import colorsys
 import json
@@ -16,7 +16,7 @@ import re
 import sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # repo root
-DEFAULT_SRC = os.path.join(os.path.expanduser("~"), "Documents", "maya", "2024", "prefs", "userRGBColors2.mel")
+DEFAULT_SRC = os.path.join(os.path.expanduser("~"), "Documents", "maya", "2026", "prefs", "userRGBColors2.mel")
 
 
 def hexv(rgb):

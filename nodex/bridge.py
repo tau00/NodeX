@@ -1504,8 +1504,11 @@ class Bridge(QtCore.QObject):
                 return
             dialog = SocketDialog(type_name, source, dest, inputs, outputs,
                                   QtWidgets.QApplication.activeWindow())
-            if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-                self._insert_inbetween(wire, type_name, *dialog.attributes())
+            try:
+                if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    self._insert_inbetween(wire, type_name, *dialog.attributes())
+            finally:
+                dialog.deleteLater()   # parented to Maya's window: would otherwise live on hidden
         except (RuntimeError, ValueError, TypeError) as e:
             self.status(str(e).strip())
 
