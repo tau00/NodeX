@@ -487,31 +487,35 @@ class NodeXPanel(QtWidgets.QWidget):
         br = self.bridge
         # Menus filled on aboutToShow are built in Python and kept on self: the wrapper that
         # QMenuBar.addMenu(str) returned went invalid in Maya (C++ alive, PySide said deleted),
-        # so the slot raised and Edit / Presets opened empty.
+        # so the slot raised and Edit / Presets opened empty. The same went for actions taken
+        # from addAction(str): every menu here is built that way, and the actions kept for later
+        # (Wires, Sync) are Python-made too.
         self.edit_menu = self._menu(self.menubar, "Edit")
         self.edit_menu.aboutToShow.connect(self._fill_edit)
-        m = self.menubar.addMenu("View")
+        m = self.view_menu = self._menu(self.menubar, "View")
         m.addAction("Frame selected\tF", lambda: self.root().frame(False))
         m.addAction("Frame all\tA", lambda: self.root().frame(True))
         m.addSeparator()
         for mode, key in (("simple", "1"), ("connected", "2"), ("full", "3"), ("custom", "4")):
             m.addAction("%s mode\t%s" % (mode.capitalize(), key), lambda mo=mode: br.setBoardMode(mo))
         m.addSeparator()
-        wm = m.addMenu("Wires")
+        self.wires_menu = self._menu(m, "Wires")
         self.links_actions = {}
-        grp = QtGui.QActionGroup(self)
+        self.links_group = QtGui.QActionGroup(self)
         for mode, label in (("auto", "Auto (node links above 1200 connections)"),
                             ("off", "Every connection"), ("on", "Node links\tW")):
-            a = wm.addAction(label, lambda mo=mode: br.setLinks(mo))
+            a = QtGui.QAction(label, self.links_group)
             a.setCheckable(True)
-            grp.addAction(a)
+            a.triggered.connect(lambda _=False, mo=mode: br.setLinks(mo))
+            self.links_group.addAction(a)
+            self.wires_menu.addAction(a)
             self.links_actions[mode] = a
-        self.menubar.addMenu("Bookmarks").addAction("Bookmark view", br.add_bookmark)
-        m = self.menubar.addMenu("Tabs")
+        self._menu(self.menubar, "Bookmarks").addAction("Bookmark view", br.add_bookmark)
+        m = self._menu(self.menubar, "Tabs")
         m.addAction("New tab", br.new_tab)
         m.addAction("Close tab", lambda: br.close_tab(self.tabbar.currentIndex()))
         m.addAction("Rename tab...", self._rename_tab)
-        m = self.menubar.addMenu("Graph")
+        m = self._menu(self.menubar, "Graph")
         m.addAction("Input connections", lambda: br.graphConnections("up"))
         m.addAction("Input and output connections", lambda: br.graphConnections("both"))
         m.addAction("Output connections", lambda: br.graphConnections("down"))
@@ -525,9 +529,10 @@ class NodeXPanel(QtWidgets.QWidget):
             lambda: (self.arrange_menu.clear(), br.fill_arrange_menu(self.arrange_menu)))
         self.presets_menu = self._menu(self.menubar, "Presets")
         self.presets_menu.aboutToShow.connect(lambda: br.fill_presets_menu(self.presets_menu))
-        self.menubar.addMenu("Window")
-        m = self.menubar.addMenu("Options")
-        self.sync_action = m.addAction("Sync with scene")
+        self._menu(self.menubar, "Window")
+        m = self.options_menu = self._menu(self.menubar, "Options")
+        self.sync_action = QtGui.QAction("Sync with scene", m)
+        m.addAction(self.sync_action)
         self.sync_action.setCheckable(True)
         self.sync_action.setChecked(True)
         self.sync_action.toggled.connect(lambda on: self.buttons["sync"].setChecked(on))
@@ -539,7 +544,7 @@ class NodeXPanel(QtWidgets.QWidget):
                         "similar names; into a selected node, for every selected node of its type")
         bulk.toggled.connect(lambda on: setattr(br, "bulk", on))
         m.setToolTipsVisible(True)
-        m = self.menubar.addMenu("Help")
+        m = self._menu(self.menubar, "Help")
         m.addAction("Keys...", self._show_help)
 
     def _menu(self, owner, title):

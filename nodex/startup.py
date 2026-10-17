@@ -18,6 +18,16 @@ WIN_MENU = "mainWindowMenu"
 ITEM = "nodexWindowsMenuItem"
 ICON = "nodeGrapherModeAllLarge.png"
 _HOOK = "_nodex_windows_menu_post"     # original postMenuCommand, kept in __main__
+# The chained postMenuCommand, in MEL. A Python callable handed to cmds.menu queries back as
+# its dotted name, and Maya re-runs a queried postMenuCommand as MEL ("Cannot find procedure
+# nodex.startup._post_windows_menu"), so the command is a MEL string calling Python.
+_POST_MEL = 'python("import nodex.startup; nodex.startup._post_windows_menu()")'
+
+
+def _set_post_command(cmd):
+    # A string handed to cmds.menu runs as Python, so the MEL command is set from MEL.
+    mel.eval('menu -e -postMenuCommand "%s" %s'
+             % (cmd.replace("\\", "\\\\").replace('"', '\\"'), WIN_MENU))
 
 
 def run():
@@ -37,8 +47,10 @@ def add_menu():
         return
     if not hasattr(__main__, _HOOK):
         orig = cmds.menu(WIN_MENU, q=True, postMenuCommand=True)
-        setattr(__main__, _HOOK, orig if isinstance(orig, str) else "")
-    cmds.menu(WIN_MENU, e=True, postMenuCommand=_post_windows_menu)
+        if not isinstance(orig, str) or "_post_windows_menu" in orig:
+            orig = ""                     # ours, left by an older NodeX: nothing to chain
+        setattr(__main__, _HOOK, orig)
+    _set_post_command(_POST_MEL)
     if cmds.menu(WIN_MENU, q=True, numberOfItems=True):
         _add_item()
 
@@ -61,10 +73,7 @@ def _add_item():
 def remove_menu():
     orig = getattr(__main__, _HOOK, None)
     if orig is not None and cmds.menu(WIN_MENU, exists=True):
-        # Maya's command is MEL; a string handed to cmds.menu runs as Python (NameError
-        # buildViewMenu on the next open), so it is put back from MEL.
-        mel.eval('menu -e -postMenuCommand "%s" %s'
-                 % (orig.replace("\\", "\\\\").replace('"', '\\"'), WIN_MENU))
+        _set_post_command(orig)           # Maya's own command, MEL as well
         delattr(__main__, _HOOK)
     if cmds.menuItem(ITEM, exists=True):
         cmds.deleteUI(ITEM, menuItem=True)
