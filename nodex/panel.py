@@ -121,7 +121,10 @@ class ClipRow(QtWidgets.QWidget):
 
 class _DescDelegate(QtWidgets.QStyledItemDelegate):
     """icon, name, then a faint description in its own column."""
-    DESC_X = 170
+
+    def __init__(self, parent=None):
+        super(_DescDelegate, self).__init__(parent)
+        self.desc_x, self.inset = _dpi(170), _dpi(6)
 
     def paint(self, painter, option, index):
         desc = index.data(QtCore.Qt.UserRole + 1)
@@ -130,10 +133,27 @@ class _DescDelegate(QtWidgets.QStyledItemDelegate):
             painter.save()
             painter.setPen(QtGui.QColor(theme.CHROME["faint"] if not option.state & QtWidgets.QStyle.State_Selected
                                         else theme.CHROME["text"]))
-            r = option.rect.adjusted(self.DESC_X, 0, -6, 0)
+            r = option.rect.adjusted(self.desc_x, 0, -self.inset, 0)
             painter.drawText(r, QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft,
                              option.fontMetrics.elidedText(desc, QtCore.Qt.ElideRight, r.width()))
             painter.restore()
+
+
+_OUT_ICONS = {}
+
+
+def _out_icon(node_type):
+    """Maya's outliner icon with its _150 / _200 art (20 / 30 / 40 px), so a scaled list picks
+    the nearest size down instead of blowing up the 20 px one."""
+    icon = _OUT_ICONS.get(node_type)
+    if icon is None:
+        icon = QtGui.QIcon()
+        for suffix in ("", "_150", "_200"):
+            path = ":/out_%s%s.png" % (node_type, suffix)
+            if QtCore.QFile.exists(path):
+                icon.addFile(path)
+        _OUT_ICONS[node_type] = icon
+    return icon
 
 
 class SearchPalette(QtWidgets.QFrame):
@@ -144,19 +164,22 @@ class SearchPalette(QtWidgets.QFrame):
 
     def __init__(self, parent=None):
         super(SearchPalette, self).__init__(parent, QtCore.Qt.Popup)
-        self.setFixedWidth(380)
+        # At Maya's interface scale, like the toolbar (see _dpi).
+        self.setFixedWidth(_dpi(380))
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
+        p2, p4, p8 = _dpi(2), _dpi(4), _dpi(8)
         self.title = QtWidgets.QLabel()
-        self.title.setStyleSheet("color:%s;padding:4px 8px 2px 8px" % theme.CHROME["muted"])
+        self.title.setStyleSheet("color:%s;padding:%dpx %dpx %dpx %dpx" % (theme.CHROME["muted"], p4, p8, p2, p8))
         self.edit = QtWidgets.QLineEdit()
         self.list = QtWidgets.QListWidget()
-        self.list.setIconSize(QtCore.QSize(16, 16))
-        self.list.setFixedHeight(340)
+        self.list.setIconSize(QtCore.QSize(_dpi(16), _dpi(16)))
+        self.list.setFixedHeight(_dpi(340))
         self.list.setItemDelegate(_DescDelegate(self.list))
         self.hint = QtWidgets.QLabel()
-        self.hint.setStyleSheet("color:%s;padding:2px 8px 4px 8px;font-size:11px" % theme.CHROME["faint"])
+        self.hint.setStyleSheet("color:%s;padding:%dpx %dpx %dpx %dpx;font-size:%dpx"
+                                % (theme.CHROME["faint"], p2, p8, p4, p8, _dpi(11)))
         for w in (self.title, self.edit, self.list, self.hint):
             lay.addWidget(w)
         self.edit.textChanged.connect(self.refill)
@@ -181,8 +204,8 @@ class SearchPalette(QtWidgets.QFrame):
         else:
             icon_type = row.get("icon")
             if icon_type:
-                icon = QtGui.QIcon(":/out_%s.png" % icon_type)
-                if not icon.pixmap(16, 16).isNull():
+                icon = _out_icon(icon_type)
+                if not icon.isNull():
                     it.setIcon(icon)
             it.setData(QtCore.Qt.UserRole, row.get("data"))
             it.setData(QtCore.Qt.UserRole + 1, row.get("desc", ""))
@@ -415,29 +438,36 @@ class NodeXPanel(QtWidgets.QWidget):
             self.shape_group.addButton(b[k])
 
     def _build_tabs(self, lay):
-        # 26 px row on --panel, flat --panel-lo tabs with 4 px top radii,
+        # Row on --panel, flat --panel-lo tabs with 4 px top radii,
         # the active tab takes the canvas colour so it merges into the board below.
-        c = theme.CHROME
+        # Maya's own tab bars follow its (scaled) font, not dpiScale: 26 px at 150%. So the heights
+        # here are the font plus the unscaled 3 px padding, 4 px margin and 3 px gap above (26 at
+        # 100%), and only widths, radii and the "+" glyph go through _dpi.
+        c = dict(theme.CHROME)
+        c.update(px=_dpi(14), rad=_dpi(4), cgap=_dpi(4), rpx=_dpi(8), apx=_dpi(7), agap=_dpi(4),
+                 afont=_dpi(15))
+        tab_h = 4 + 2 * 3 + QtGui.QFontMetrics(self.font()).height()
+        row_h = tab_h + 3
         row = QtWidgets.QWidget()
         row.setObjectName("nodexTabs")
-        row.setFixedHeight(26)
+        row.setFixedHeight(row_h)
         row.setStyleSheet(
             "#nodexTabs{background:%(panel)s}"
             "QTabBar{background:transparent;border:0}"
             "QTabBar::tab{background:%(panelLo)s;color:%(muted)s;border:0;margin:4px 1px 0 0;"
-            "padding:3px 14px;border-top-left-radius:4px;border-top-right-radius:4px}"
+            "padding:3px %(px)dpx;border-top-left-radius:%(rad)dpx;border-top-right-radius:%(rad)dpx}"
             "QTabBar::tab:hover:!selected{color:%(text)s}"
             "QTabBar::tab:selected{background:%(canvas)s;color:%(ink)s}"
-            "QTabBar::close-button{subcontrol-position:right;margin-left:4px}"
-            "QToolButton{background:transparent;border:0;color:%(muted)s;padding:3px 8px;margin-top:4px}"
+            "QTabBar::close-button{subcontrol-position:right;margin-left:%(cgap)dpx}"
+            "QToolButton{background:transparent;border:0;color:%(muted)s;padding:3px %(rpx)dpx;margin-top:4px}"
             "QToolButton:hover{color:%(ink)s}"
             "QToolButton::menu-indicator{image:none}"
             # "+" sits right after the last tab and reads as a button, not as a stray glyph.
-            "QToolButton#nodexAddTab{color:%(ink)s;font-size:15px;padding:0 7px 1px 7px;"
-            "margin:4px 0 0 4px;border-radius:4px;background:%(panelLo)s}"
+            "QToolButton#nodexAddTab{color:%(ink)s;font-size:%(afont)dpx;padding:0 %(apx)dpx 1px %(apx)dpx;"
+            "margin:4px 0 0 %(agap)dpx;border-radius:%(rad)dpx;background:%(panelLo)s}"
             "QToolButton#nodexAddTab:hover{background:#555555}" % c)
         h = QtWidgets.QHBoxLayout(row)
-        h.setContentsMargins(16, 0, 12, 0)
+        h.setContentsMargins(_dpi(16), 0, _dpi(12), 0)
         h.setSpacing(0)
         self.tabbar = QtWidgets.QTabBar()
         self.tabbar.setTabsClosable(True)
@@ -454,9 +484,9 @@ class NodeXPanel(QtWidgets.QWidget):
         h.addWidget(self.tabbar)
         self.add_tab_btn = QtWidgets.QToolButton()
         self.add_tab_btn.setObjectName("nodexAddTab")
-        # Same box as a tab (the tabbar measures 23 px live, 4 px top margin in the QSS), so the
-        # tops and bottoms line up; the tabbar has no tabs yet to ask here.
-        self.add_tab_btn.setFixedHeight(23)
+        # Same box as a tab (4 px top margin in the QSS, 23 px at 100%), so the tops and bottoms
+        # line up; the tabbar has no tabs yet to ask here.
+        self.add_tab_btn.setFixedHeight(tab_h)
         self.add_tab_btn.setText("+")
         self.add_tab_btn.setAutoRaise(True)
         self.add_tab_btn.setToolTip("New tab")
@@ -472,14 +502,16 @@ class NodeXPanel(QtWidgets.QWidget):
         h.addWidget(self.recent_btn)
         for w in (self.tabbar, self.add_tab_btn, self.recent_btn):
             h.setAlignment(w, QtCore.Qt.AlignBottom)
-        lay.addWidget(ClipRow(row, 26))
+        lay.addWidget(ClipRow(row, row_h))
 
     def _build_status(self, lay):
+        # The font plus 11 px (24 at 100%), like the tabs row; the gaps go through _dpi.
+        row_h = QtGui.QFontMetrics(self.font()).height() + 11
         row = QtWidgets.QWidget()
-        row.setFixedHeight(24)
+        row.setFixedHeight(row_h)
         h = QtWidgets.QHBoxLayout(row)
-        h.setContentsMargins(12, 0, 12, 0)
-        h.setSpacing(16)
+        h.setContentsMargins(_dpi(12), 0, _dpi(12), 0)
+        h.setSpacing(_dpi(16))
         self.counts = QtWidgets.QLabel()
         h.addWidget(self.counts)
         legend = []
@@ -496,7 +528,7 @@ class NodeXPanel(QtWidgets.QWidget):
         h.addWidget(self.message, 1)
         self.zoom_label = QtWidgets.QLabel("100%")
         h.addWidget(self.zoom_label)
-        lay.addWidget(ClipRow(row, 24))
+        lay.addWidget(ClipRow(row, row_h))
 
     def _build_menus(self):
         br = self.bridge
@@ -736,7 +768,7 @@ class NodeXPanel(QtWidgets.QWidget):
     def _open_search(self, provider, on_pick, title="", hint="", at_cursor=True):
         """Bridge entry point: inbetween and link-drag searches open under the pointer."""
         pos = QtGui.QCursor.pos() if at_cursor else self.quick.mapToGlobal(
-            QtCore.QPoint(max(0, self.quick.width() // 2 - 190), 20))
+            QtCore.QPoint(max(0, (self.quick.width() - self.palette.width()) // 2), _dpi(20)))
         self.palette.open(provider, on_pick, pos, title=title, hint=hint)
 
     def _open_create(self, x=None, y=None):
