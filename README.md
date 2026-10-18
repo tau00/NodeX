@@ -56,7 +56,8 @@ nodex.show()
 nodex/        the package: model, ops, bridge, panel, QML board (nodex/qml)
 installer/    drag-and-drop installer and userSetup
 tools/        build_palette.py (colours from Maya prefs), build_shaders.py (QML shaders to .qsb
-              with Maya's qsb), extract_icons.py (Maya icon dump)
+              with Maya's qsb), extract_icons.py (Maya icon dump), upscale_icons.py (128 px
+              node header icons from tools/icon_src; needs a local realesrgan-ncnn-vulkan exe)
 tests/        unittest suites and QML probes
 build.py      packs dist/NodeX-<version>.zip
 ```
