@@ -23,6 +23,7 @@ MAX_NODES = 500        # default node limit of a tab, like the limit of Maya's o
 MAX_NODES_VAR = "nodexMaxNodes"   # optionVar: a preference of the machine, not of the scene
 SHAPES_VAR = "nodexShapes"        # optionVar: Display group mode, kept across panel rebuilds
 DEPTH_VAR = "nodexDepth"          # optionVar: traversal depth, -1 = unlimited
+ADD_NEW_VAR = "nodexAddNew"       # optionVar: a preference of the machine, not of the scene
 GRID = 22
 
 
@@ -49,6 +50,16 @@ def depth_pref():
             return 1
         return None if d < 0 else d
     return 1
+
+
+def add_new_pref():
+    """Nodes made outside NodeX join the active tab; on unless switched off."""
+    if cmds.optionVar(exists=ADD_NEW_VAR):
+        try:
+            return bool(int(cmds.optionVar(q=ADD_NEW_VAR)))
+        except (TypeError, ValueError):
+            return True
+    return True
 
 
 def _js(v):
@@ -99,6 +110,7 @@ class Bridge(QtCore.QObject):
         self.depth = depth_pref()       # None = unlimited
         self.max_nodes = max_nodes_pref()
         self.shapes = shapes_pref()     # all | except | none (Display group)
+        self.add_new = add_new_pref()   # nodes made outside NodeX join the active tab
         self.infos = {}                 # uuid -> node info on the active tab
         self.views = {}                 # uuid -> model.NodeView
         self.dead = set()
@@ -366,6 +378,11 @@ class Bridge(QtCore.QObject):
         cmds.optionVar(intValue=(MAX_NODES_VAR, self.max_nodes))
         self._emit_counts()
 
+    def set_add_new(self, on):
+        """Gates only nodes made outside NodeX; its own Create, paste and inbetween always place."""
+        self.add_new = bool(on)
+        cmds.optionVar(intValue=(ADD_NEW_VAR, int(self.add_new)))
+
     # ================================================================== adding / removing nodes
 
     def _rects(self, exclude=()):
@@ -506,7 +523,7 @@ class Bridge(QtCore.QObject):
                     self.dead.add(u)
                     self.infos[u]["dead"] = True
                     changed.add(u)
-        if ev["added"] and self.sync_on and not self.locked:
+        if ev["added"] and self.sync_on and not self.locked and self.add_new:
             fresh = [u for u in self._filter_shapes(ev["added"]) if u not in self.infos]
             if len(fresh) > BURST_LIMIT:
                 self.status("%d nodes created -- too many to add; use Add selected" % len(fresh))
