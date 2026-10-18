@@ -800,9 +800,21 @@ class Bridge(QtCore.QObject):
 
     @QtCore.Slot(str)
     def toggleFold(self, u):
+        """Fold a node that shows rows; unfold one that shows none. A node with no rows reads
+        as folded whatever its mode (an unconnected node in "connected"), so unfolding falls
+        back to every attribute -- flipping simple <-> connected left it folded for good."""
         v = self._view_for(u)
-        cur = v.mode or self.tab.get("mode", "connected")
-        v.mode = "connected" if cur == "simple" else "simple"
+        board = self.tab.get("mode", "connected")
+        shown = model.describe(u, v, board, self.query)
+        if shown is None:
+            return
+        if shown["rows"]:
+            v.mode = "simple"
+        else:
+            v.mode = "connected"
+            unfolded = model.describe(u, v, board, self.query)
+            if unfolded is not None and not unfolded["rows"]:
+                v.mode = "full"
         self._queue(changed=[u])
 
     @QtCore.Slot(str)
