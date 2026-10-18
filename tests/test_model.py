@@ -1,3 +1,6 @@
+import os
+import shutil
+import tempfile
 import unittest
 
 import _maya
@@ -381,6 +384,39 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(model.nice_name("input3D"), "Input 3D")
         self.assertEqual(model.nice_name("outputTranslateX"), "Output Translate X")
         self.assertEqual(model.nice_name("inMatrix1"), "In Matrix 1")
+
+    def test_reloaded_plugin_type_is_described(self):
+        # The per-type attribute cache must not hand out a reloaded plug-in's freed attributes.
+        d = tempfile.mkdtemp()
+        path = os.path.join(d, "nxReloadNode.py")
+        with open(path, "w") as f:
+            f.write(_RELOAD_PLUGIN)
+        for _ in range(2):
+            cmds.loadPlugin(path)
+            u = model.uuids_of([cmds.createNode("nxReload")])[0]
+            info = model.describe(u, None, model.ALL)
+            self.assertIn("inValues[0]", rows_by_key(info))
+            _maya.fresh_scene()
+            cmds.unloadPlugin("nxReloadNode.py")
+        shutil.rmtree(d, ignore_errors=True)
+
+
+_RELOAD_PLUGIN = '''
+import maya.api.OpenMaya as om
+def maya_useNewAPI(): pass
+class Node(om.MPxNode):
+    id = om.MTypeId(0x0007F7F1)
+    @staticmethod
+    def init():
+        n = om.MFnNumericAttribute()
+        Node.inp = n.create("inValues", "inv", om.MFnNumericData.kDouble, 0.0)
+        n.array = True
+        om.MPxNode.addAttribute(Node.inp)
+def initializePlugin(o):
+    om.MFnPlugin(o).registerNode("nxReload", Node.id, Node, Node.init)
+def uninitializePlugin(o):
+    om.MFnPlugin(o).deregisterNode(Node.id)
+'''
 
 
 if __name__ == "__main__":

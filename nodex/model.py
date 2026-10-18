@@ -322,8 +322,10 @@ def top_attrs(fn):
     except (RuntimeError, AttributeError):
         static = -1
     cacheable = count == static
-    if cacheable and type_name in _type_attrs:
-        return _type_attrs[type_name]
+    hit = _type_attrs.get(type_name) if cacheable else None
+    # A plug-in unload frees its attributes: a reloaded type has new ones, the cached are dead.
+    if hit is not None and all(h.isValid() for h in hit[1]):
+        return hit[0]
     out = []
     for i in range(count):
         a = fn.attribute(i)
@@ -332,7 +334,7 @@ def top_attrs(fn):
             continue
         out.append((fa.name, a, fa.hidden, _keyable(a)))
     if cacheable:
-        _type_attrs[type_name] = out
+        _type_attrs[type_name] = (out, [om.MObjectHandle(t[1]) for t in out])
     return out
 
 
