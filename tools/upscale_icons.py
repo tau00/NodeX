@@ -1,6 +1,6 @@
-"""Regenerate the high-res node header icons from their 40 px Maya originals.
+"""Regenerate the high-res node header and toolbar icons from their 40 px Maya originals.
 
-Reads tools/icon_src (<type>.png, toolbar/search.png: Maya's _200 icons, kept as a stable input),
+Reads tools/icon_src (<type>.png, toolbar/<name>.png: Maya's _200 icons, kept as a stable input),
 upscales each 4x with realesrgan-ncnn-vulkan, downsamples to --size with an alpha-aware Lanczos,
 and writes RGBA over the matching file in nodex/icons. Re-running always starts from the 40 px
 sources, never from an already upscaled file.
@@ -8,12 +8,15 @@ sources, never from an already upscaled file.
 The upscaler is a dev-time tool, not shipped: the portable build from
 https://github.com/xinntao/Real-ESRGAN/releases (realesrgan-ncnn-vulkan-*-windows.zip).
 Runs with system Python + Pillow (mayapy has no Pillow).
+toolbar/openBar.png (the 14x40 group grip) has no source: it is not square and stays Maya's own.
 
 Usage:
   python tools/upscale_icons.py --upscaler path/to/realesrgan-ncnn-vulkan.exe [--model realesrgan-x4plus-anime] [--size 128]
   python tools/upscale_icons.py --check [--size 128]    # changes nothing, exit 1 if a target is missing or not size x size
+  --only "toolbar/*" limits either mode to the sources matching that pattern.
 """
 import argparse
+import fnmatch
 import os
 import subprocess
 import sys
@@ -26,14 +29,14 @@ SRC = os.path.join(HERE, "tools", "icon_src")
 DST = os.path.join(HERE, "nodex", "icons")
 
 
-def sources():
+def sources(only="*"):
     """Relative paths (forward slashes) of every source PNG; the layout mirrors nodex/icons."""
     out = []
     for base, _, files in os.walk(SRC):
         for f in sorted(files):
             if f.endswith(".png"):
                 out.append(os.path.relpath(os.path.join(base, f), SRC).replace("\\", "/"))
-    return sorted(out)
+    return sorted(r for r in out if fnmatch.fnmatch(r, only))
 
 
 def bleed(im):
@@ -79,9 +82,9 @@ def downscale(big, size):
     return big.convert("RGBa").resize((size, size), Image.LANCZOS).convert("RGBA")
 
 
-def check(size):
+def check(size, only):
     bad = 0
-    for rel in sources():
+    for rel in sources(only):
         path = os.path.join(DST, rel)
         if not os.path.isfile(path):
             print("MISS %-30s missing" % rel)
@@ -96,9 +99,9 @@ def check(size):
     return bad
 
 
-def build(exe, model, size):
+def build(exe, model, size, only):
     with tempfile.TemporaryDirectory() as tmp:
-        for rel in sources():
+        for rel in sources(only):
             src = Image.open(os.path.join(SRC, rel)).convert("RGBA")
             out = downscale(upscale(exe, model, src, tmp, rel), size)
             dst = os.path.join(DST, rel)
@@ -113,14 +116,15 @@ def main():
     ap.add_argument("--model", default="realesrgan-x4plus-anime")
     ap.add_argument("--size", type=int, default=128)
     ap.add_argument("--check", action="store_true", help="only verify the shipped icons, change nothing")
+    ap.add_argument("--only", default="*", help='glob on the source path, e.g. "toolbar/*"')
     a = ap.parse_args()
     if a.check:
-        sys.exit(1 if check(a.size) else 0)
+        sys.exit(1 if check(a.size, a.only) else 0)
     if not a.upscaler:
         ap.error("--upscaler is required unless --check is given")
     if not os.path.isfile(a.upscaler):
         ap.error("no upscaler at %s" % a.upscaler)
-    build(a.upscaler, a.model, a.size)
+    build(a.upscaler, a.model, a.size, a.only)
 
 
 if __name__ == "__main__":

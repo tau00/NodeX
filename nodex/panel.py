@@ -58,6 +58,17 @@ def _icon(name):
     return QtGui.QIcon(os.path.join(TB_DIR, name + ".png"))
 
 
+def _dpi(v):
+    """v px at Maya's interface scale. Maya runs Qt unscaled (QT_ENABLE_HIGHDPI_SCALING=0, device
+    pixel ratio 1) and grows its own widgets through MQtUtil.dpiScale, the Node Editor toolbar
+    included; calling it (not v * scale) gives the same rounding. Unscaled without Maya's UI."""
+    try:
+        from maya import OpenMayaUI
+        return int(OpenMayaUI.MQtUtil.dpiScale(int(v)))
+    except Exception:
+        return int(v)
+
+
 def _flag(v):
     """A Qt enum / flag value, or a plain int from QML, as a plain int."""
     return getattr(v, "value", v)
@@ -331,17 +342,20 @@ class NodeXPanel(QtWidgets.QWidget):
         b = QtWidgets.QToolButton()
         b.setAutoRaise(True)
         b.setIcon(_icon(icon))
-        b.setIconSize(QtCore.QSize(20, 20))
-        b.setFixedSize(28, 26)
+        # nodeEdCreateToolbar: 26 px buttons around Maya's 20 px icons, both at the interface scale.
+        b.setIconSize(QtCore.QSize(_dpi(20), _dpi(20)))
+        b.setFixedSize(_dpi(26), _dpi(26))
         b.setToolTip(tip)
         self.buttons[key] = b
         return b
 
     def _build_toolbar(self, lay):
         bar = QtWidgets.QWidget()
-        bar.setFixedHeight(32)
+        pad = _dpi(2)
+        bar_h = _dpi(26) + 2 * pad
+        bar.setFixedHeight(bar_h)
         h = QtWidgets.QHBoxLayout(bar)
-        h.setContentsMargins(12, 2, 12, 2)
+        h.setContentsMargins(_dpi(12), pad, _dpi(12), pad)
         h.setSpacing(1)
         self.groups = {}
         checkable = {"sync", "filter", "swatch", "lock", "grid", "snap", "links", "simple", "connected", "full",
@@ -356,22 +370,22 @@ class NodeXPanel(QtWidgets.QWidget):
                 grip = QtWidgets.QToolButton()
                 grip.setAutoRaise(True)
                 grip.setIcon(_icon("openBar"))
-                grip.setIconSize(QtCore.QSize(7, 20))
-                grip.setFixedSize(12, 26)
+                grip.setIconSize(QtCore.QSize(_dpi(7), _dpi(20)))
+                grip.setFixedSize(_dpi(12), _dpi(26))
                 grip.setToolTip("Show or hide the %s buttons" % grp)
                 bh.addWidget(grip)
             for key, icon, tip in items:
                 if key == "depth":
                     d = self.bridge.depth
                     w = QtWidgets.QLineEdit("∞" if d is None else str(d))
-                    w.setFixedWidth(30)
+                    w.setFixedWidth(_dpi(30))
                     w.setAlignment(QtCore.Qt.AlignCenter)
                     w.setToolTip(tip)
                     self.depth_field = w
                 elif key == "find":
                     w = QtWidgets.QLineEdit()
                     w.setPlaceholderText("Find node or attribute")
-                    w.setFixedWidth(210)
+                    w.setFixedWidth(_dpi(210))
                     w.setClearButtonEnabled(True)
                     w.setToolTip("Dims what does not match; Enter selects and frames the matches")
                     self.find_field = w
@@ -385,9 +399,9 @@ class NodeXPanel(QtWidgets.QWidget):
                 grip.clicked.connect(lambda _=False, ws=inner: [x.setVisible(not x.isVisible()) for x in ws])
             h.addWidget(box)
             if grp not in ("Filter",):
-                h.addSpacing(4)
+                h.addSpacing(_dpi(4))
         h.addStretch(1)
-        lay.addWidget(ClipRow(bar, 32))
+        lay.addWidget(ClipRow(bar, bar_h))
         b = self.buttons
         b["sync"].setChecked(True)
         b["connected"].setChecked(True)
@@ -596,7 +610,7 @@ class NodeXPanel(QtWidgets.QWidget):
         am.aboutToShow.connect(lambda: (am.clear(), br.fill_arrange_menu(am)))
         b["arrange"].setMenu(am)
         b["arrange"].setPopupMode(QtWidgets.QToolButton.MenuButtonPopup)
-        b["arrange"].setFixedSize(40, 26)
+        b["arrange"].setFixedSize(_dpi(40), _dpi(26))
         for mode in ("simple", "connected", "full"):
             b[mode].clicked.connect(lambda _=False, mo=mode: br.setBoardMode(mo))
         b["custom"].clicked.connect(lambda: br.setBoardMode("custom"))
