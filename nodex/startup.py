@@ -10,7 +10,7 @@ import shutil
 import __main__
 from maya import cmds, mel
 
-VERSION = "2.0.1"
+VERSION = "2.1.0"
 MODULE = "NodeX"
 LABEL = "NodeX Node Editor"
 COMMAND = "import nodex; nodex.show()"
