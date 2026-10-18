@@ -17,7 +17,8 @@ not hand-picked.
 - Inbetween nodes and unit-conversion nodes handled as part of the wire
 - Value fields with drag-slide, multi-field sweep and typed entry (one undo step)
 - Copy / paste / duplicate of node fragments, plus JSON presets
-- Graph tabs, node positions and frames saved inside the scene (network node `nodexBoard`)
+- Graph tabs, node positions and frames saved inside the scene (network node `nodexBoard`);
+  nodes created elsewhere in Maya join the open tab, switchable under Options > Add new nodes to tab
 - Auto layout: layered rearrange, align, grid, straighten
 
 Keys: see [HOTKEYS.md](HOTKEYS.md), or Help > Keys inside the editor.

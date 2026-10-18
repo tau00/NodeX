@@ -583,6 +583,13 @@ class NodeXPanel(QtWidgets.QWidget):
         self.sync_action.setCheckable(True)
         self.sync_action.setChecked(True)
         self.sync_action.toggled.connect(lambda on: self.buttons["sync"].setChecked(on))
+        self.add_new_action = QtGui.QAction("Add new nodes to tab", m)
+        m.addAction(self.add_new_action)
+        self.add_new_action.setCheckable(True)
+        self.add_new_action.setChecked(br.add_new)
+        self.add_new_action.setToolTip("Nodes made outside NodeX (Hypershade, scripts, Maya menus) join "
+                                       "the open tab; NodeX's own Create, paste and inbetween always do")
+        self.add_new_action.toggled.connect(br.set_add_new)
         m.addAction("Node limit...", self._ask_node_limit)
         bulk = m.addAction("Bulk connect from selection")
         bulk.setCheckable(True)
