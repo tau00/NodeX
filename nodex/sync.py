@@ -6,6 +6,7 @@ refresh. Every callback id is also kept in a registry that survives a module rel
 reloaded or crashed panel can never leave callbacks behind.
 """
 import __main__
+import traceback
 
 import maya.api.OpenMaya as om
 from maya.OpenMaya import MFileIO   # API 2.0 has no MFileIO
@@ -14,6 +15,17 @@ from PySide6 import QtCore
 from . import model
 
 _REGISTRY_KEY = "_nodex_callback_ids"
+
+
+_reported = set()   # callbacks whose failure was already printed this session
+
+
+def _report(name):
+    """A callback must never raise into Maya, but its first failure is printed once."""
+    if name not in _reported:
+        _reported.add(name)
+        om.MGlobal.displayWarning("NodeX: the %s callback failed; the board may miss scene changes" % name)
+        traceback.print_exc()
 
 
 def registry():
@@ -143,14 +155,14 @@ class SceneSync(QtCore.QObject):
             self._added.append(om.MObjectHandle(obj))
             self._kick()
         except Exception:
-            pass
+            _report("added")
 
     def _on_removed(self, obj, _data):
         try:
             self._removed.append(model.uuid_of(obj))
             self._kick()
         except Exception:
-            pass
+            _report("removed")
 
     def _on_renamed(self, obj, _prev, _data):
         try:
@@ -159,7 +171,7 @@ class SceneSync(QtCore.QObject):
             self._renamed.add(model.uuid_of(obj))
             self._kick()
         except Exception:
-            pass
+            _report("renamed")
 
     def _on_attr(self, msg, plug, other, uuid):
         try:
@@ -175,7 +187,7 @@ class SceneSync(QtCore.QObject):
                     self._changed.add(model.uuid_of(other.node()))
             self._kick()
         except Exception:
-            pass
+            _report("attr")
 
     def _on_selection(self, _data):
         self._selection = True
@@ -198,7 +210,7 @@ class SceneSync(QtCore.QObject):
         try:
             self.beforeSave.emit()
         except Exception:
-            pass
+            _report("before save")
 
     # ------------------------------------------------------------------ flush
 

@@ -2,6 +2,7 @@
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 import _maya
 
@@ -42,17 +43,26 @@ class SceneSyncTest(unittest.TestCase):
         path = os.path.join(tempfile.gettempdir(), "nodex_sync_test.ma")
         cmds.file(rename=path)
         cmds.file(save=True, type="mayaAscii", force=True)
+        self.addCleanup(os.remove, path)
         self.flush()
         cmds.file(path, i=True, namespace="imp")
         self.assertEqual(self.flush()["added"], [])
+
+    def test_callback_failure_is_reported_once(self):
+        # Callbacks never raise into Maya; a silent guard once hid the MFileIO bug for good.
+        sync._reported.discard("renamed")
+        with mock.patch.object(sync.traceback, "print_exc") as printed:
+            self.sync._on_renamed(None, "", None)     # no node: uuid_of raises
+            self.sync._on_renamed(None, "", None)
+        self.assertEqual(printed.call_count, 1)
 
     def test_script_node_reaches_the_board(self):
         saved = cmds.optionVar(q=ADD_NEW_VAR) if cmds.optionVar(exists=ADD_NEW_VAR) else None
         cmds.optionVar(remove=ADD_NEW_VAR)
         self.sync.stop()
         b = Bridge()
-        b.sync.start()
         try:
+            b.sync.start()
             u = model.uuids_of([cmds.createNode("multiplyDivide")])[0]
             b.sync.flush()
             self.assertIn(u, b.infos)

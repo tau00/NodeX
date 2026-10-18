@@ -15,7 +15,9 @@ def event(added=(), removed=(), history=False):
 
 class AddNewTest(unittest.TestCase):
     def setUp(self):
-        # The bridge reads the preference: start from the default, never the developer's.
+        # The bridge reads the preference: start from the default, and give the developer's back.
+        self.add_new = (cmds.optionVar(q=ADD_NEW_VAR)
+                        if cmds.optionVar(exists=ADD_NEW_VAR) else None)
         cmds.optionVar(remove=ADD_NEW_VAR)
         # create_at() records type usage in a machine optionVar: keep the developer's.
         self.usage = (cmds.optionVar(q=catalog.USAGE_VAR)
@@ -29,6 +31,8 @@ class AddNewTest(unittest.TestCase):
     def tearDown(self):
         self.bridge._flush_timer.stop()
         cmds.optionVar(remove=ADD_NEW_VAR)
+        if self.add_new is not None:
+            cmds.optionVar(intValue=(ADD_NEW_VAR, int(self.add_new)))
         if self.usage is None:
             cmds.optionVar(remove=catalog.USAGE_VAR)
         else:
