@@ -8,6 +8,7 @@ reloaded or crashed panel can never leave callbacks behind.
 import __main__
 
 import maya.api.OpenMaya as om
+from maya.OpenMaya import MFileIO   # API 2.0 has no MFileIO
 from PySide6 import QtCore
 
 from . import model
@@ -137,7 +138,7 @@ class SceneSync(QtCore.QObject):
 
     def _on_added(self, obj, _data):
         try:
-            if om.MFileIO.isReadingFile() or om.MFileIO.isOpeningFile():
+            if MFileIO.isReadingFile() or MFileIO.isOpeningFile():
                 return
             self._added.append(om.MObjectHandle(obj))
             self._kick()
@@ -153,7 +154,7 @@ class SceneSync(QtCore.QObject):
 
     def _on_renamed(self, obj, _prev, _data):
         try:
-            if om.MFileIO.isReadingFile():
+            if MFileIO.isReadingFile():
                 return
             self._renamed.add(model.uuid_of(obj))
             self._kick()
