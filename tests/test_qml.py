@@ -155,6 +155,13 @@ class QmlTest(unittest.TestCase):
         self.assertGreaterEqual(r["nodeItems"], len(self.snap["nodes"]))
         self.assertEqual(r["frame"], [900, 600])
 
+    def test_shipped_type_icon_loads_at_128(self):
+        # A sourceSize cap below the art's size makes Qt downsample the 128 px icons on load.
+        r = self.runs[0]["typeIcon"]
+        self.assertIsNotNone(r, "no built node of a shipped icon type")
+        self.assertEqual(r["status"], 1, r)     # Image.Ready
+        self.assertEqual((r["w"], r["h"]), (128, 128), r)
+
     def test_js_containers_reach_variant_slots(self):
         self.assertEqual(self.runs[0]["jsCalls"], {"disconnectWires": "ok", "moveNodes": "ok", "bundleTip": "ok"})
 

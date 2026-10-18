@@ -73,6 +73,36 @@ def pump(ms):
         app.processEvents(QtCore.QEventLoop.AllEvents, 20)
 
 
+def find_items(item, name):
+    """Every visual descendant of `item` with this objectName (Loader content included)."""
+    out = []
+    for child in item.childItems():
+        if child.objectName() == name:
+            out.append(child)
+        out.extend(find_items(child, name))
+    return out
+
+
+def type_icon(root):
+    """The header icon of a built node whose type ships a local 128 px copy in nodex/icons:
+    status, and the loaded pixmap size. implicitWidth, not sourceSize -- sourceSize reads back
+    whatever was requested even when a smaller file loaded."""
+    shipped = set(f[:-4] for f in os.listdir(os.path.join(ROOT, "nodex", "icons")) if f.endswith(".png"))
+    t = QtCore.QElapsedTimer()
+    t.start()
+    while t.elapsed() < 3000:
+        for it in find_items(root, "typeIcon"):
+            # Image.Status has no Python converter; read it through QML.
+            e = QtQml.QQmlExpression(QtQml.QQmlEngine.contextForObject(it), it,
+                'JSON.stringify({type: type, status: status, w: implicitWidth, h: implicitHeight})')
+            v = e.evaluate()
+            r = json.loads(v[0] if isinstance(v, tuple) else v)
+            if r["type"] in shipped and r["status"] != 2:   # 2: Image.Loading
+                return r
+        pump(50)
+    return None
+
+
 def main():
     snap = {"nodes": [], "wires": [], "sel": [], "lead": ""}
     if len(sys.argv) > 1:
@@ -96,6 +126,7 @@ def main():
         q.show()
         pump(150)
         res["nodeItems"] = root.property("nodesVersion")
+        res["typeIcon"] = type_icon(root)
         # Every QML-bound signal must reach its handler with its arguments intact.
         b.viewRequested.emit(11.0, 22.0, 1.5)
         b.wiresChanged.emit(json.dumps(snap["wires"][:1]))

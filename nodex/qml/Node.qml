@@ -281,12 +281,15 @@ Item {
                 // ---------------------------------------------------------------- header content
                 Image {
                     id: icon
+                    objectName: "typeIcon"
                     x: 8; y: 4; width: 20; height: 20
-                    sourceSize: Qt.size(40, 40)
+                    // 128 px: 20 units x maxZoom 2.5 x DPR 2 = 100 device px; mipmaps cover low zoom.
+                    // Maya's 40 px :/ fallback is never upscaled past its natural size.
+                    sourceSize: Qt.size(128, 128)
                     smooth: true
                     mipmap: true
                     property string type: node.info ? node.info.type : ""
-                    // Local copy first (nodex/icons, extracted from the same Maya resource), then Maya's own
+                    // Local copy first (nodex/icons, upscaled from the same Maya resource), then Maya's own
                     // resource for types without a copy -- :/ resources exist only inside the Maya GUI.
                     onTypeChanged: {
                         if (!type) { source = ""; return }
@@ -350,7 +353,7 @@ Item {
                     x: parent.width - 48; y: 4; width: 20; height: 20
                     Rectangle { anchors.fill: parent; radius: 3; color: "#000000"; opacity: 0.22; visible: fma.containsMouse || (node.info !== null && node.info.filterOpen) }
                     Image {
-                        anchors.centerIn: parent; width: 14; height: 14; sourceSize: Qt.size(40, 40)
+                        anchors.centerIn: parent; width: 14; height: 14; sourceSize: Qt.size(128, 128)
                         source: bridge.toolbarIcon("search"); smooth: true; mipmap: true
                         opacity: fma.containsMouse || (node.info !== null && node.info.filterOpen) ? 1 : 0.6
                     }
